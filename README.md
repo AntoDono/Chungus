@@ -38,6 +38,89 @@ CHUNGUS is built on Django and supports multiple LLM providers:
 - **vLLM**: High-performance inference engine for large language models
 - **Ollama**: Local model serving with flexible configuration
 
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        API[API Clients]
+        WEB[Web Browser]
+    end
+    
+    subgraph "Django Application"
+        subgraph "API Layer"
+            API_AUTH[API Authentication]
+            RATE_LIMIT[Rate Limiting]
+            CHAT_API["/api/v1/chat/completions"]
+            MODELS_API["/api/v1/models"]
+        end
+        
+        subgraph "Dashboard Layer"
+            DASHBOARD[Dashboard UI]
+            ADMIN[Admin Panel]
+            API_DOCS[API Documentation]
+        end
+        
+        subgraph "Business Logic"
+            VIEWS[LLM Views]
+            DASH_VIEWS[Dashboard Views]
+            UTILS[LLM Utils]
+        end
+        
+        subgraph "Background Tasks"
+            WARMUP[Warmup Task<br/>Every 3 minutes]
+        end
+    end
+    
+    subgraph "Data Layer"
+        DB[(SQLite Database)]
+        MODELS_DB[Model Config]
+        APIKEYS_DB[API Keys]
+        REQUESTS_DB[Request Logs]
+    end
+    
+    subgraph "LLM Providers"
+        VLLM[vLLM Engine]
+        OLLAMA[Ollama Client]
+        GPU[GPU Resources]
+    end
+    
+    API -->|Bearer Token| API_AUTH
+    API_AUTH --> RATE_LIMIT
+    RATE_LIMIT --> CHAT_API
+    CHAT_API --> VIEWS
+    VIEWS --> UTILS
+    UTILS -->|vLLM Provider| VLLM
+    UTILS -->|Ollama Provider| OLLAMA
+    VLLM --> GPU
+    OLLAMA --> GPU
+    
+    WEB --> DASHBOARD
+    WEB --> ADMIN
+    WEB --> API_DOCS
+    
+    DASHBOARD --> DASH_VIEWS
+    ADMIN --> DASH_VIEWS
+    DASH_VIEWS --> DB
+    
+    VIEWS --> DB
+    WARMUP -->|Warmup Requests| VIEWS
+    WARMUP --> DB
+    
+    DB --> MODELS_DB
+    DB --> APIKEYS_DB
+    DB --> REQUESTS_DB
+    
+    MODELS_DB -->|Model Config| VIEWS
+    APIKEYS_DB -->|Auth & Rate Limits| API_AUTH
+    
+    style API fill:#4ade80
+    style WEB fill:#4ade80
+    style GPU fill:#fbbf24
+    style WARMUP fill:#60a5fa
+    style DB fill:#a78bfa
+```
+
 ## Installation
 
 ### Prerequisites

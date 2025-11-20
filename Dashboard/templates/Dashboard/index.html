@@ -13,6 +13,13 @@
 {% block content %}
         <div class="hero-section">
             <div class="hero-title">CHUNGUS</div>
+            <div class="hero-stats">
+                <span style="color: #4ade80; font-family: 'Courier New', monospace; font-size: 0.9em; letter-spacing: 0.1em;">
+                    <span style="color: #ffffff;">{{ total_requests|default:0|floatformat:0 }}</span> REQUESTS PROCESSED
+                    <span style="margin: 0 1em; color: #4ade80;">//</span>
+                    <span style="color: #ffffff;">{{ total_tokens|default:0|floatformat:0 }}</span> TOKENS PROCESSED
+                </span>
+            </div>
             <div class="hero-subtitle">
                 Computing Hybrid Utilization Network for<br>
                 GPU Unified Scheduling

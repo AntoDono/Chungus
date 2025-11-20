@@ -192,6 +192,97 @@
         </div>
 
         <div class="api-section">
+            <h2>LIST MODELS</h2>
+
+            <div class="endpoint-info">
+                <strong style="color: #4ade80;">Endpoint:</strong> <code>GET /api/v1/models</code>
+            </div>
+
+            <p style="color: #ffffff; line-height: 1.8; margin-bottom: 1em;">
+                Retrieve a list of available models. Only active models are returned.
+            </p>
+
+            <h3>Example Request</h3>
+            <div class="code-example-wrapper" data-example="listmodels">
+                <div class="language-switcher">
+                    <button class="lang-btn active" onclick="switchLanguage('listmodels', 'curl')">cURL</button>
+                    <button class="lang-btn" onclick="switchLanguage('listmodels', 'python')">Python</button>
+                    <button class="lang-btn" onclick="switchLanguage('listmodels', 'js')">JavaScript</button>
+                </div>
+                <div class="code-example active" data-lang="curl">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">curl -X GET <span class="base-url">https://your-domain.com/api/v1</span>/models \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+                    </div>
+                </div>
+                <div class="code-example" data-lang="python">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">import requests
+
+url = "<span class="base-url">https://your-domain.com/api/v1</span>/models"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+models = response.json()
+
+for model in models['data']:
+    print(f"Model: {model['id']}")</pre>
+                    </div>
+                </div>
+                <div class="code-example" data-lang="js">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">const response = await fetch('<span class="base-url">https://your-domain.com/api/v1</span>/models', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+
+const data = await response.json();
+data.data.forEach(model => {
+  console.log(`Model: ${model.id}`);
+});</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Response Format</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre>{
+  "object": "list",
+  "data": [
+    {
+      "id": "llama-2-7b-chat",
+      "object": "model",
+      "created": 1694268190,
+      "owned_by": "chungus",
+      "permission": [],
+      "root": "llama-2-7b-chat",
+      "parent": null
+    },
+    {
+      "id": "mistral-7b-instruct",
+      "object": "model",
+      "created": 1694268200,
+      "owned_by": "chungus",
+      "permission": [],
+      "root": "mistral-7b-instruct",
+      "parent": null
+    }
+  ]
+}</pre>
+            </div>
+            <div class="note">
+                <strong>Note:</strong> Only active models are returned. Use the model <code>id</code> field when making chat completion requests.
+            </div>
+        </div>
+
+        <div class="api-section">
             <h2>NON-STREAMING CHAT COMPLETIONS</h2>
 
             <div class="endpoint-info">

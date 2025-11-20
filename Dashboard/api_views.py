@@ -260,13 +260,85 @@ def get_chart_data(request):
             hourly_counts[hour.isoformat()] = hourly_counts.get(hour.isoformat(), 0) + 1
         hourly_data = [{'hour': k, 'count': v} for k, v in sorted(hourly_counts.items())]
     
-    # Model usage
+    # Model usage (requests)
     model_usage = Model.objects.annotate(
         request_count=Count('requests', filter=Q(requests__created_at__gte=last_24h))
     ).filter(request_count__gt=0).values('name', 'request_count')
     
+    # Model token breakdown
+    model_tokens = Model.objects.annotate(
+        total_tokens=Sum('requests__total_tokens', filter=Q(requests__created_at__gte=last_24h)),
+        input_tokens=Sum('requests__input_tokens', filter=Q(requests__created_at__gte=last_24h)),
+        output_tokens=Sum('requests__output_tokens', filter=Q(requests__created_at__gte=last_24h))
+    ).filter(total_tokens__gt=0).values('name', 'total_tokens', 'input_tokens', 'output_tokens')
+    
+    # API key usage (requests)
+    api_key_usage = APIKey.objects.annotate(
+        request_count=Count('requests', filter=Q(requests__created_at__gte=last_24h)),
+        total_tokens=Sum('requests__total_tokens', filter=Q(requests__created_at__gte=last_24h))
+    ).filter(request_count__gt=0).values('name', 'request_count', 'total_tokens')
+    
     return JsonResponse({
         'hourly_requests': list(hourly_data),
         'model_usage': list(model_usage),
+        'model_tokens': list(model_tokens),
+        'api_key_usage': list(api_key_usage),
+    })
+
+
+@login_required
+@user_passes_test(superuser_required)
+@require_http_methods(["GET"])
+def get_request_history(request):
+    """Get paginated request history"""
+    from django.core.paginator import Paginator
+    
+    page = int(request.GET.get('page', 1))
+    per_page = int(request.GET.get('per_page', 50))
+    
+    # Get filter parameters
+    model_id = request.GET.get('model_id')
+    api_key_id = request.GET.get('api_key_id')
+    status = request.GET.get('status')
+    
+    # Build query
+    queryset = LLMRequest.objects.select_related('model', 'api_key').all().order_by('-created_at')
+    
+    if model_id:
+        queryset = queryset.filter(model_id=model_id)
+    if api_key_id:
+        queryset = queryset.filter(api_key_id=api_key_id)
+    if status:
+        queryset = queryset.filter(status=status)
+    
+    # Paginate
+    paginator = Paginator(queryset, per_page)
+    page_obj = paginator.get_page(page)
+    
+    requests_data = []
+    for req in page_obj:
+        requests_data.append({
+            'id': req.id,
+            'model_name': req.model.name,
+            'api_key_name': req.api_key.name,
+            'status': req.status,
+            'input_tokens': req.input_tokens,
+            'output_tokens': req.output_tokens,
+            'total_tokens': req.total_tokens,
+            'created_at': req.created_at.isoformat(),
+            'completed_at': req.completed_at.isoformat() if req.completed_at else None,
+            'error_message': req.error_message if req.status == 'failed' else None,
+        })
+    
+    return JsonResponse({
+        'requests': requests_data,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total_pages': paginator.num_pages,
+            'total_count': paginator.count,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
     })
 

@@ -330,9 +330,70 @@
             </div>
 
             <div class="chart-container">
-                <h3>MODEL USAGE</h3>
+                <h3>MODEL USAGE (REQUESTS)</h3>
                 <div class="chart-wrapper">
                     <canvas id="modelUsageChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>MODEL TOKEN BREAKDOWN</h3>
+                <div class="chart-wrapper">
+                    <canvas id="modelTokensChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>API KEY USAGE</h3>
+                <div class="chart-wrapper">
+                    <canvas id="apiKeyUsageChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Request History -->
+            <div class="management-section">
+                <h2>REQUEST HISTORY</h2>
+                <div style="margin-bottom: 1em; display: flex; gap: 1em; flex-wrap: wrap; align-items: center;">
+                    <select id="filterModel" style="padding: 0.5em; background: #111; border: 1px solid #333; color: #ffffff; font-family: 'Courier New', monospace;">
+                        <option value="">ALL MODELS</option>
+                    </select>
+                    <select id="filterApiKey" style="padding: 0.5em; background: #111; border: 1px solid #333; color: #ffffff; font-family: 'Courier New', monospace;">
+                        <option value="">ALL API KEYS</option>
+                    </select>
+                    <select id="filterStatus" style="padding: 0.5em; background: #111; border: 1px solid #333; color: #ffffff; font-family: 'Courier New', monospace;">
+                        <option value="">ALL STATUS</option>
+                        <option value="completed">COMPLETED</option>
+                        <option value="failed">FAILED</option>
+                        <option value="processing">PROCESSING</option>
+                        <option value="pending">PENDING</option>
+                    </select>
+                    <button class="btn" onclick="applyFilters()">APPLY FILTERS</button>
+                </div>
+                <div class="table-container">
+                    <table id="requestHistoryTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>MODEL</th>
+                                <th>API KEY</th>
+                                <th>STATUS</th>
+                                <th>INPUT TOKENS</th>
+                                <th>OUTPUT TOKENS</th>
+                                <th>TOTAL TOKENS</th>
+                                <th>CREATED AT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestHistoryTableBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 1em; display: flex; justify-content: space-between; align-items: center;">
+                    <div id="paginationInfo" style="color: #888; font-family: 'Courier New', monospace;"></div>
+                    <div style="display: flex; gap: 0.5em;">
+                        <button class="btn" id="prevPageBtn" onclick="changePage(-1)">PREV</button>
+                        <button class="btn" id="nextPageBtn" onclick="changePage(1)">NEXT</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -442,9 +503,11 @@
 
 
     <script>
-        let requestsChart, modelUsageChart;
+        let requestsChart, modelUsageChart, modelTokensChart, apiKeyUsageChart;
         let editingModelId = null;
         let editingApiKeyId = null;
+        let currentPage = 1;
+        let paginationData = null;
 
         // Initialize charts
         function initCharts() {
@@ -475,7 +538,7 @@
                 }
             });
 
-            // Model Usage Chart
+            // Model Usage Chart (Requests)
             const modelCtx = document.getElementById('modelUsageChart').getContext('2d');
             modelUsageChart = new Chart(modelCtx, {
                 type: 'bar',
@@ -500,7 +563,94 @@
                 }
             });
 
+            // Model Tokens Chart
+            const modelTokensCtx = document.getElementById('modelTokensChart').getContext('2d');
+            modelTokensChart = new Chart(modelTokensCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Input Tokens',
+                            data: [],
+                            backgroundColor: '#4ade80'
+                        },
+                        {
+                            label: 'Output Tokens',
+                            data: [],
+                            backgroundColor: '#3acf70'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: { color: '#888' }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#888' }, grid: { color: '#333' } },
+                        x: { ticks: { color: '#888' }, grid: { color: '#333' } }
+                    }
+                }
+            });
+
+            // API Key Usage Chart
+            const apiKeyCtx = document.getElementById('apiKeyUsageChart').getContext('2d');
+            apiKeyUsageChart = new Chart(apiKeyCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Requests',
+                            data: [],
+                            backgroundColor: '#4ade80',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Tokens',
+                            data: [],
+                            backgroundColor: '#3acf70',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: { color: '#888' }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true, 
+                            ticks: { color: '#888' }, 
+                            grid: { color: '#333' } 
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            ticks: { color: '#888' },
+                            grid: { drawOnChartArea: false }
+                        },
+                        x: { ticks: { color: '#888' }, grid: { color: '#333' } }
+                    }
+                }
+            });
+
             loadChartData();
+            loadRequestHistory();
+            loadFilterOptions();
         }
 
         // Load chart data
@@ -521,7 +671,7 @@
                     requestsChart.update();
                 }
 
-                // Update model usage chart
+                // Update model usage chart (requests)
                 if (data.model_usage && data.model_usage.length > 0) {
                     const labels = data.model_usage.map(m => m.name);
                     const counts = data.model_usage.map(m => m.request_count);
@@ -529,8 +679,123 @@
                     modelUsageChart.data.datasets[0].data = counts;
                     modelUsageChart.update();
                 }
+
+                // Update model tokens chart
+                if (data.model_tokens && data.model_tokens.length > 0) {
+                    const labels = data.model_tokens.map(m => m.name);
+                    const inputTokens = data.model_tokens.map(m => m.input_tokens || 0);
+                    const outputTokens = data.model_tokens.map(m => m.output_tokens || 0);
+                    modelTokensChart.data.labels = labels;
+                    modelTokensChart.data.datasets[0].data = inputTokens;
+                    modelTokensChart.data.datasets[1].data = outputTokens;
+                    modelTokensChart.update();
+                }
+
+                // Update API key usage chart
+                if (data.api_key_usage && data.api_key_usage.length > 0) {
+                    const labels = data.api_key_usage.map(k => k.name);
+                    const requests = data.api_key_usage.map(k => k.request_count || 0);
+                    const tokens = data.api_key_usage.map(k => k.total_tokens || 0);
+                    apiKeyUsageChart.data.labels = labels;
+                    apiKeyUsageChart.data.datasets[0].data = requests;
+                    apiKeyUsageChart.data.datasets[1].data = tokens;
+                    apiKeyUsageChart.update();
+                }
             } catch (error) {
                 console.error('Error loading chart data:', error);
+            }
+        }
+
+        // Load filter options
+        async function loadFilterOptions() {
+            try {
+                const [modelsRes, keysRes] = await Promise.all([
+                    fetch('/api/models/'),
+                    fetch('/api/keys/')
+                ]);
+                const modelsData = await modelsRes.json();
+                const keysData = await keysRes.json();
+
+                const modelSelect = document.getElementById('filterModel');
+                const keySelect = document.getElementById('filterApiKey');
+
+                modelsData.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = model.name;
+                    modelSelect.appendChild(option);
+                });
+
+                keysData.api_keys.forEach(key => {
+                    const option = document.createElement('option');
+                    option.value = key.id;
+                    option.textContent = key.name;
+                    keySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+
+        // Load request history
+        async function loadRequestHistory(page = 1) {
+            try {
+                const modelId = document.getElementById('filterModel').value;
+                const apiKeyId = document.getElementById('filterApiKey').value;
+                const status = document.getElementById('filterStatus').value;
+
+                let url = `/api/request-history/?page=${page}&per_page=50`;
+                if (modelId) url += `&model_id=${modelId}`;
+                if (apiKeyId) url += `&api_key_id=${apiKeyId}`;
+                if (status) url += `&status=${status}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                paginationData = data.pagination;
+                currentPage = page;
+
+                const tbody = document.getElementById('requestHistoryTableBody');
+                tbody.innerHTML = '';
+
+                data.requests.forEach(req => {
+                    const row = document.createElement('tr');
+                    const statusColor = req.status === 'completed' ? '#4ade80' : 
+                                      req.status === 'failed' ? '#ff4444' : 
+                                      req.status === 'processing' ? '#ffaa00' : '#888';
+                    const createdAt = new Date(req.created_at).toLocaleString();
+                    
+                    row.innerHTML = `
+                        <td>${req.id}</td>
+                        <td>${req.model_name}</td>
+                        <td>${req.api_key_name}</td>
+                        <td><span style="color: ${statusColor};">${req.status.toUpperCase()}</span></td>
+                        <td>${req.input_tokens || 0}</td>
+                        <td>${req.output_tokens || 0}</td>
+                        <td>${req.total_tokens || 0}</td>
+                        <td>${createdAt}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Update pagination info and buttons
+                document.getElementById('paginationInfo').textContent = 
+                    `Page ${paginationData.page} of ${paginationData.total_pages} (${paginationData.total_count} total)`;
+                document.getElementById('prevPageBtn').disabled = !paginationData.has_previous;
+                document.getElementById('nextPageBtn').disabled = !paginationData.has_next;
+            } catch (error) {
+                console.error('Error loading request history:', error);
+            }
+        }
+
+        function applyFilters() {
+            loadRequestHistory(1);
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= paginationData.total_pages) {
+                loadRequestHistory(newPage);
             }
         }
 
@@ -915,6 +1180,9 @@
         initCharts();
         loadModels();
         loadApiKeys();
-        setInterval(loadChartData, 60000); // Refresh charts every minute
+        setInterval(() => {
+            loadChartData();
+            loadRequestHistory(currentPage);
+        }, 60000); // Refresh charts and history every minute
     </script>
 {% endblock %}

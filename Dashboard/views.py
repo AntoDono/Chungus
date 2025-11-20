@@ -15,7 +15,19 @@ def index(request):
     """
     Index/home page with military design
     """
-    return render(request, 'Dashboard/index.html')
+    # Get overall stats for display
+    from django.db.models import Sum
+    
+    total_requests = LLMRequest.objects.count()
+    token_stats = LLMRequest.objects.aggregate(
+        total_tokens=Sum('total_tokens')
+    )
+    
+    context = {
+        'total_requests': total_requests,
+        'total_tokens': token_stats.get('total_tokens', 0) or 0,
+    }
+    return render(request, 'Dashboard/index.html', context)
 
 
 def api_docs(request):

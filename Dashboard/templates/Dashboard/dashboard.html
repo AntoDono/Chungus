@@ -135,6 +135,10 @@
             border: 1px solid #333;
             width: 90%;
             max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
         }
         .modal-header {
             color: #4ade80;
@@ -277,12 +281,14 @@
                     <button class="btn btn-primary" onclick="openModelModal()">ADD MODEL</button>
                 </div>
                 <div class="table-container">
-                    <table id="modelsTable">
+                    <div id="modelsLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                    <table id="modelsTable" style="display: none;">
                         <thead>
                             <tr>
                                 <th>NAME</th>
                                 <th>PROVIDER</th>
                                 <th>STATUS</th>
+                                <th>ALWAYS WARM</th>
                                 <th>REQUESTS</th>
                                 <th>TOKENS</th>
                                 <th>ACTIONS</th>
@@ -302,7 +308,8 @@
                     <button class="btn btn-primary" onclick="openApiKeyModal()">ADD API KEY</button>
                 </div>
                 <div class="table-container">
-                    <table id="apiKeysTable">
+                    <div id="apiKeysLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                    <table id="apiKeysTable" style="display: none;">
                         <thead>
                             <tr>
                                 <th>NAME</th>
@@ -324,28 +331,32 @@
             <!-- Charts -->
             <div class="chart-container">
                 <h3>REQUESTS PER HOUR (LAST 24H)</h3>
-                <div class="chart-wrapper">
+                <div id="requestsChartLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                <div class="chart-wrapper" id="requestsChartWrapper" style="display: none;">
                     <canvas id="requestsChart"></canvas>
                 </div>
             </div>
 
             <div class="chart-container">
                 <h3>MODEL USAGE (REQUESTS)</h3>
-                <div class="chart-wrapper">
+                <div id="modelUsageChartLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                <div class="chart-wrapper" id="modelUsageChartWrapper" style="display: none;">
                     <canvas id="modelUsageChart"></canvas>
                 </div>
             </div>
 
             <div class="chart-container">
                 <h3>MODEL TOKEN BREAKDOWN</h3>
-                <div class="chart-wrapper">
+                <div id="modelTokensChartLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                <div class="chart-wrapper" id="modelTokensChartWrapper" style="display: none;">
                     <canvas id="modelTokensChart"></canvas>
                 </div>
             </div>
 
             <div class="chart-container">
                 <h3>API KEY USAGE</h3>
-                <div class="chart-wrapper">
+                <div id="apiKeyUsageChartLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                <div class="chart-wrapper" id="apiKeyUsageChartWrapper" style="display: none;">
                     <canvas id="apiKeyUsageChart"></canvas>
                 </div>
             </div>
@@ -370,7 +381,8 @@
                     <button class="btn" onclick="applyFilters()">APPLY FILTERS</button>
                 </div>
                 <div class="table-container">
-                    <table id="requestHistoryTable">
+                    <div id="requestHistoryLoading" style="text-align: center; padding: 2em; color: #4ade80; font-family: 'Courier New', monospace;">LOADING...</div>
+                    <table id="requestHistoryTable" style="display: none;">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -447,6 +459,10 @@
                 <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em;">
                     <label style="margin-bottom: 0;">ACTIVE</label>
                     <input type="checkbox" id="modelIsActive" name="is_active" checked>
+                </div>
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em;">
+                    <label style="margin-bottom: 0;">ALWAYS WARM</label>
+                    <input type="checkbox" id="modelAlwaysWarm" name="alwayswarm">
                 </div>
                 <button type="submit" class="btn btn-primary">SAVE</button>
                 <button type="button" class="btn" onclick="closeModelModal()">CANCEL</button>
@@ -669,6 +685,10 @@
                     requestsChart.data.labels = labels;
                     requestsChart.data.datasets[0].data = counts;
                     requestsChart.update();
+                    document.getElementById('requestsChartLoading').style.display = 'none';
+                    document.getElementById('requestsChartWrapper').style.display = 'block';
+                } else {
+                    document.getElementById('requestsChartLoading').textContent = 'NO DATA';
                 }
 
                 // Update model usage chart (requests)
@@ -678,6 +698,10 @@
                     modelUsageChart.data.labels = labels;
                     modelUsageChart.data.datasets[0].data = counts;
                     modelUsageChart.update();
+                    document.getElementById('modelUsageChartLoading').style.display = 'none';
+                    document.getElementById('modelUsageChartWrapper').style.display = 'block';
+                } else {
+                    document.getElementById('modelUsageChartLoading').textContent = 'NO DATA';
                 }
 
                 // Update model tokens chart
@@ -689,6 +713,10 @@
                     modelTokensChart.data.datasets[0].data = inputTokens;
                     modelTokensChart.data.datasets[1].data = outputTokens;
                     modelTokensChart.update();
+                    document.getElementById('modelTokensChartLoading').style.display = 'none';
+                    document.getElementById('modelTokensChartWrapper').style.display = 'block';
+                } else {
+                    document.getElementById('modelTokensChartLoading').textContent = 'NO DATA';
                 }
 
                 // Update API key usage chart
@@ -700,9 +728,17 @@
                     apiKeyUsageChart.data.datasets[0].data = requests;
                     apiKeyUsageChart.data.datasets[1].data = tokens;
                     apiKeyUsageChart.update();
+                    document.getElementById('apiKeyUsageChartLoading').style.display = 'none';
+                    document.getElementById('apiKeyUsageChartWrapper').style.display = 'block';
+                } else {
+                    document.getElementById('apiKeyUsageChartLoading').textContent = 'NO DATA';
                 }
             } catch (error) {
                 console.error('Error loading chart data:', error);
+                document.getElementById('requestsChartLoading').textContent = 'ERROR LOADING';
+                document.getElementById('modelUsageChartLoading').textContent = 'ERROR LOADING';
+                document.getElementById('modelTokensChartLoading').textContent = 'ERROR LOADING';
+                document.getElementById('apiKeyUsageChartLoading').textContent = 'ERROR LOADING';
             }
         }
 
@@ -740,6 +776,10 @@
         // Load request history
         async function loadRequestHistory(page = 1) {
             try {
+                // Show loading
+                document.getElementById('requestHistoryLoading').style.display = 'block';
+                document.getElementById('requestHistoryTable').style.display = 'none';
+                
                 const modelId = document.getElementById('filterModel').value;
                 const apiKeyId = document.getElementById('filterApiKey').value;
                 const status = document.getElementById('filterStatus').value;
@@ -783,8 +823,13 @@
                     `Page ${paginationData.page} of ${paginationData.total_pages} (${paginationData.total_count} total)`;
                 document.getElementById('prevPageBtn').disabled = !paginationData.has_previous;
                 document.getElementById('nextPageBtn').disabled = !paginationData.has_next;
+                
+                // Hide loading, show table
+                document.getElementById('requestHistoryLoading').style.display = 'none';
+                document.getElementById('requestHistoryTable').style.display = 'table';
             } catch (error) {
                 console.error('Error loading request history:', error);
+                document.getElementById('requestHistoryLoading').textContent = 'ERROR LOADING REQUEST HISTORY';
             }
         }
 
@@ -813,6 +858,7 @@
                         <td>${model.name}</td>
                         <td>${model.provider.toUpperCase()}</td>
                         <td>${model.is_active ? '<span style="color: #4ade80;">ACTIVE</span>' : '<span style="color: #888;">INACTIVE</span>'}</td>
+                        <td>${model.alwayswarm ? '<span style="color: #4ade80;">YES</span>' : '<span style="color: #888;">NO</span>'}</td>
                         <td>${model.total_requests || 0}</td>
                         <td>${(model.total_tokens_processed || 0).toLocaleString()}</td>
                         <td>
@@ -822,8 +868,13 @@
                     `;
                     tbody.appendChild(row);
                 });
+                
+                // Hide loading, show table
+                document.getElementById('modelsLoading').style.display = 'none';
+                document.getElementById('modelsTable').style.display = 'table';
             } catch (error) {
                 console.error('Error loading models:', error);
+                document.getElementById('modelsLoading').textContent = 'ERROR LOADING MODELS';
             }
         }
 
@@ -864,8 +915,13 @@
                     `;
                     tbody.appendChild(row);
                 });
+                
+                // Hide loading, show table
+                document.getElementById('apiKeysLoading').style.display = 'none';
+                document.getElementById('apiKeysTable').style.display = 'table';
             } catch (error) {
                 console.error('Error loading API keys:', error);
+                document.getElementById('apiKeysLoading').textContent = 'ERROR LOADING API KEYS';
             }
         }
 
@@ -944,6 +1000,7 @@
                             document.getElementById('modelHfToken').value = model.huggingface_token || '';
                             document.getElementById('modelOllamaUrl').value = model.ollama_base_url || '';
                             document.getElementById('modelIsActive').checked = model.is_active;
+                            document.getElementById('modelAlwaysWarm').checked = model.alwayswarm || false;
                         }
                     });
             }
@@ -1039,6 +1096,7 @@
                 huggingface_token: document.getElementById('modelHfToken').value,
                 ollama_base_url: document.getElementById('modelOllamaUrl').value,
                 is_active: document.getElementById('modelIsActive').checked,
+                alwayswarm: document.getElementById('modelAlwaysWarm').checked,
             };
 
             try {
@@ -1057,9 +1115,8 @@
                     });
                 }
                 const result = await response.json();
-                if (result.success) {
-                    closeModelModal();
-                    loadModels();
+                if (result.success && response.status === 200) {
+                    window.location.reload();
                 } else {
                     alert('Error: ' + result.error);
                 }
@@ -1094,15 +1151,18 @@
                     });
                 }
                 const result = await response.json();
-                if (result.success) {
+                if (result.success && response.status === 200) {
                     if (result.key) {
                         document.getElementById('apiKeyValue').textContent = result.key;
                         document.getElementById('apiKeyDisplay').style.display = 'block';
+                        // Show the key for 2 seconds, then refresh
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        // For updates, refresh immediately
+                        window.location.reload();
                     }
-                    setTimeout(() => {
-                        closeApiKeyModal();
-                        loadApiKeys();
-                    }, 2000);
                 } else {
                     alert('Error: ' + result.error);
                 }

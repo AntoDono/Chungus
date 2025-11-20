@@ -31,13 +31,13 @@ class APIKeyAdmin(admin.ModelAdmin):
 
 @admin.register(Model)
 class ModelAdmin(admin.ModelAdmin):
-    list_display = ['name', 'provider', 'model_path', 'is_active', 'total_requests', 'total_responses', 'total_errors', 'total_tokens_processed', 'created_at']
-    list_filter = ['is_active', 'provider', 'created_at']
+    list_display = ['name', 'provider', 'model_path', 'is_active', 'alwayswarm', 'total_requests', 'total_responses', 'total_errors', 'total_tokens_processed', 'created_at']
+    list_filter = ['is_active', 'alwayswarm', 'provider', 'created_at']
     search_fields = ['name', 'model_path', 'description']
     readonly_fields = ['created_at', 'updated_at', 'total_requests', 'total_responses', 'total_errors', 'total_tokens_processed', 'total_input_tokens', 'total_output_tokens']
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'model_path', 'provider', 'is_active')
+            'fields': ('name', 'description', 'model_path', 'provider', 'is_active', 'alwayswarm')
         }),
         ('Provider Configuration', {
             'fields': ('ollama_base_url', 'huggingface_token'),

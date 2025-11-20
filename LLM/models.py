@@ -63,6 +63,7 @@ class Model(models.Model):
         help_text="Path or identifier for the model (e.g., 'meta-llama/Llama-2-7b-chat-hf')"
     )
     is_active = models.BooleanField(default=True, help_text="Whether this model is available")
+    alwayswarm = models.BooleanField(default=False, help_text="Keep this model warm by sending periodic requests")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

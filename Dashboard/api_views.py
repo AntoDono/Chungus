@@ -29,6 +29,7 @@ def get_models(request):
                 'model_path': m.model_path,
                 'provider': m.provider,
                 'is_active': m.is_active,
+                'alwayswarm': m.alwayswarm,
                 'max_context_length': m.max_context_length,
                 'default_temperature': m.default_temperature,
                 'default_max_tokens': m.default_max_tokens,
@@ -57,6 +58,7 @@ def create_model(request):
             model_path=data['model_path'],
             provider=data.get('provider', 'vllm'),
             is_active=data.get('is_active', True),
+            alwayswarm=data.get('alwayswarm', False),
             max_context_length=data.get('max_context_length', 4096),
             default_temperature=data.get('default_temperature', 0.7),
             default_max_tokens=data.get('default_max_tokens', 512),
@@ -88,6 +90,8 @@ def update_model(request, model_id):
             model.provider = data['provider']
         if 'is_active' in data:
             model.is_active = data['is_active']
+        if 'alwayswarm' in data:
+            model.alwayswarm = data['alwayswarm']
         if 'max_context_length' in data:
             model.max_context_length = data['max_context_length']
         if 'default_temperature' in data:

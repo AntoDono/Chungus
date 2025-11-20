@@ -81,6 +81,11 @@ poetry run python manage.py createsuperuser
 poetry run python manage.py runserver
 ```
 
+7. Model warmup runs automatically:
+   - The warmup task starts automatically when Django/Gunicorn starts
+   - It runs every 3 minutes in the background
+   - No additional setup required!
+
 ## Usage
 
 ### Web Interface
@@ -201,6 +206,17 @@ Each API key supports:
 - Rate limiting (per minute and per hour)
 - Usage statistics tracking
 - Active/inactive status
+
+### Model Warmup
+
+Models can be kept warm to avoid cold start delays. To enable warmup for a model:
+
+1. Navigate to `/dashboard/` or `/admin/`
+2. Edit the model you want to keep warm
+3. Enable the "Always Warm" checkbox
+4. Ensure the cron job is set up (see Setup step 7)
+
+Models with `alwayswarm=True` will receive a simple "what is 1 + 1" request every 3 minutes to keep them loaded in memory.
 
 ## Project Structure
 

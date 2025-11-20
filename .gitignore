@@ -6,3 +6,4 @@ db.sqlite3
 .pytest_cache/
 folding@home/*
 !folding@home/setup.sh
+crypto/rigel-1.22.3-linux/rigel

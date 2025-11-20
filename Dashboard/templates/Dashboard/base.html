@@ -5,6 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CHUNGUS{% endblock %}</title>
     {% load static %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    
+    <!-- Meta Description -->
+    <meta name="description" content="CHUNGUS - Computing Hybrid Utilization Network for GPU Unified Scheduling. High-performance infrastructure for LLM hosting, protein folding, and intelligent GPU workload management.">
+    <meta name="author" content="Youwei Zhen">
+    
+    <!-- OpenGraph Meta Tags -->
+    {% if request %}
+    <meta property="og:title" content="{% block og_title %}CHUNGUS - Computing Hybrid Utilization Network for GPU Unified Scheduling{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}High-performance personal computing infrastructure designed for advanced GPU workload management and distributed processing. Provides intelligent resource allocation, real-time monitoring, and seamless coordination across multiple GPU units.{% endblock %}">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'chungus.png' %}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:site_name" content="CHUNGUS">
+    <meta property="article:author" content="Youwei Zhen">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}CHUNGUS{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}High-performance infrastructure for LLM hosting, protein folding, and intelligent GPU workload management.{% endblock %}">
+    <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'chungus.png' %}">
+    <meta name="twitter:creator" content="@antodono">
+    <meta name="author" content="Youwei Zhen">
+    {% else %}
+    <meta property="og:title" content="CHUNGUS - Computing Hybrid Utilization Network for GPU Unified Scheduling">
+    <meta property="og:description" content="High-performance personal computing infrastructure designed for advanced GPU workload management and distributed processing. Provides intelligent resource allocation, real-time monitoring, and seamless coordination across multiple GPU units.">
+    <meta property="og:image" content="{% static 'chungus.png' %}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="CHUNGUS">
+    <meta property="article:author" content="Youwei Zhen">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CHUNGUS">
+    <meta name="twitter:description" content="High-performance infrastructure for LLM hosting, protein folding, and intelligent GPU workload management.">
+    <meta name="twitter:image" content="{% static 'chungus.png' %}">
+    <meta name="twitter:creator" content="@antodono">
+    <meta name="author" content="Youwei Zhen">
+    {% endif %}
+    
     <link rel="stylesheet" href="{% static 'global.css' %}">
     {% block extra_css %}{% endblock %}
 </head>

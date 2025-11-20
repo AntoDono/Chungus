@@ -334,10 +334,20 @@ body::-webkit-scrollbar {
     color: #ffffff;
     letter-spacing: 0.3em;
     font-weight: 900;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.2em;
     opacity: 0;
     animation: fadeIn 1.5s ease-out forwards;
     text-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+}
+
+.hero-stats {
+    padding: 0.75em 1.5em;
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid #4ade80;
+    display: inline-block;
+    margin-bottom: 1.5em;
+    opacity: 0;
+    animation: fadeIn 1.5s ease-out 0.4s forwards;
 }
 
 .hero-subtitle {

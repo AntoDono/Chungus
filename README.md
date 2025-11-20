@@ -244,6 +244,80 @@ for line in response.iter_lines():
                 continue
 ```
 
+#### Embeddings Request
+
+CHUNGUS also provides an OpenAI-compatible embeddings endpoint at `/api/v1/embeddings`.
+
+```python
+import requests
+
+url = "http://localhost:8000/api/v1/embeddings"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_API_KEY"
+}
+data = {
+    "model": "nomic-embed-text",
+    "input": "Your text here"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+embedding = result["data"][0]["embedding"]
+print(f"Embedding dimension: {len(embedding)}")
+```
+
+**Using cURL:**
+
+```bash
+curl https://api.openai.com/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "Your text here"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [
+        0.0023064255,
+        -0.009327292,
+        ... (embedding vector values)
+      ]
+    }
+  ],
+  "model": "text-embedding-3-small",
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}
+```
+
+**Multiple Inputs:**
+
+You can also pass an array of strings to embed multiple texts at once:
+
+```python
+data = {
+    "model": "nomic-embed-text",
+    "input": [
+        "First text to embed",
+        "Second text to embed",
+        "Third text to embed"
+    ]
+}
+```
+
 For complete API documentation, visit `/api-docs/` after starting the server.
 
 ## Configuration
@@ -273,10 +347,15 @@ Models can be configured through the Django admin interface or the dashboard:
 2. Click "ADD MODEL"
 3. Configure:
    - Model name and path
+   - Model type (Chat or Embedding)
    - Provider (vLLM or Ollama)
    - Context length, temperature, max tokens
    - HuggingFace token (if needed)
    - Ollama base URL (if using Ollama)
+
+**For Embedding Models:**
+- **vLLM**: Use models like `intfloat/e5-mistral-7b-instruct` with `task="embed"` (automatically set)
+- **Ollama**: Use embedding models like `nomic-embed-text` or `all-minilm`
 
 ### API Key Management
 
@@ -325,6 +404,9 @@ Chungus/
 
 ### Chat Completions
 - `POST /api/v1/chat/completions` - Generate chat completions (streaming and non-streaming)
+
+### Embeddings
+- `POST /api/v1/embeddings` - Generate embeddings for text inputs (supports single string or array of strings)
 
 ### Models
 - `GET /api/v1/models` - List available models

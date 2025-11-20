@@ -79,6 +79,18 @@ class Model(models.Model):
         help_text="Provider to use for this model"
     )
     
+    # Model type selection
+    MODEL_TYPE_CHOICES = [
+        ('chat', 'Chat'),
+        ('embedding', 'Embedding'),
+    ]
+    model_type = models.CharField(
+        max_length=10,
+        choices=MODEL_TYPE_CHOICES,
+        default='chat',
+        help_text="Type of model: chat for text generation, embedding for embeddings"
+    )
+    
     # Ollama configuration
     ollama_base_url = models.CharField(
         max_length=255,

@@ -11,7 +11,9 @@ from .utils import (
     generate_with_ollama,
     count_tokens_approximate,
     format_messages_for_ollama,
-    get_ollama_client
+    get_ollama_client,
+    embed_with_vllm,
+    embed_with_ollama
 )
 
 from vllm import SamplingParams
@@ -55,6 +57,16 @@ def chat_completions(request):
                 'code': 'model_not_found'
             }
         }, status=404)
+    
+    # Validate that model is a chat model
+    if model.model_type != 'chat':
+        return JsonResponse({
+            'error': {
+                'message': f'Model "{model_name}" is not a chat model',
+                'type': 'invalid_request_error',
+                'code': 'invalid_model_type'
+            }
+        }, status=400)
     
     # Validate messages
     if not messages or not isinstance(messages, list):
@@ -453,3 +465,172 @@ def list_models(request):
         ]
     }
     return JsonResponse(models_data)
+
+
+@require_api_key
+@require_http_methods(["POST"])
+def embeddings(request):
+    """
+    OpenAI-compatible embeddings endpoint
+    POST /v1/embeddings
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': {
+                'message': 'Invalid JSON in request body',
+                'type': 'invalid_request_error',
+                'code': 'invalid_json'
+            }
+        }, status=400)
+    
+    # Extract parameters
+    model_name = data.get('model')
+    input_data = data.get('input')
+    
+    # Validate model
+    try:
+        model = Model.objects.get(name=model_name, is_active=True)
+    except Model.DoesNotExist:
+        return JsonResponse({
+            'error': {
+                'message': f'Model "{model_name}" not found or not active',
+                'type': 'invalid_request_error',
+                'code': 'model_not_found'
+            }
+        }, status=404)
+    
+    # Validate that model is an embedding model
+    if model.model_type != 'embedding':
+        return JsonResponse({
+            'error': {
+                'message': f'Model "{model_name}" is not an embedding model',
+                'type': 'invalid_request_error',
+                'code': 'invalid_model_type'
+            }
+        }, status=400)
+    
+    # Validate input
+    if input_data is None:
+        return JsonResponse({
+            'error': {
+                'message': 'input is required',
+                'type': 'invalid_request_error',
+                'code': 'missing_input'
+            }
+        }, status=400)
+    
+    # Handle both string and array inputs
+    if isinstance(input_data, str):
+        texts = [input_data]
+    elif isinstance(input_data, list):
+        if not input_data:
+            return JsonResponse({
+                'error': {
+                    'message': 'input array cannot be empty',
+                    'type': 'invalid_request_error',
+                    'code': 'empty_input'
+                }
+            }, status=400)
+        texts = input_data
+    else:
+        return JsonResponse({
+            'error': {
+                'message': 'input must be a string or array of strings',
+                'type': 'invalid_request_error',
+                'code': 'invalid_input_type'
+            }
+        }, status=400)
+    
+    # Validate all items in array are strings
+    for i, text in enumerate(texts):
+        if not isinstance(text, str):
+            return JsonResponse({
+                'error': {
+                    'message': f'input[{i}] must be a string',
+                    'type': 'invalid_request_error',
+                    'code': 'invalid_input_type'
+                }
+            }, status=400)
+    
+    # Create the input string for logging (join all texts)
+    input_text = '\n'.join(texts) if isinstance(input_data, list) else input_data
+    
+    # Create LLMRequest record
+    llm_request = LLMRequest.objects.create(
+        api_key=request.api_key,
+        model=model,
+        prompt=input_text,
+        system_prompt="",
+        temperature=None,
+        max_tokens=None,
+        stream=False,
+        request_metadata={'input': input_data, 'type': 'embedding'}
+    )
+    
+    try:
+        # Mark request as started
+        llm_request.mark_started()
+        
+        # Route to appropriate provider
+        if model.provider == 'vllm':
+            engine = get_or_create_engine(model)
+            embeddings_list, total_tokens = embed_with_vllm(engine, texts)
+        elif model.provider == 'ollama':
+            embeddings_list, total_tokens = embed_with_ollama(model, texts)
+        else:
+            raise ValueError(f"Unknown provider: {model.provider}")
+        
+        # Calculate output tokens as embedding dimensions
+        embedding_dimensions = len(embeddings_list[0]) if embeddings_list and len(embeddings_list) > 0 else 0
+        output_tokens = embedding_dimensions * len(embeddings_list)  # Total embedding values
+        
+        # Mark as completed with token usage
+        llm_request.mark_completed(
+            response_text=f"Generated {len(embeddings_list)} embeddings",
+            input_tokens=total_tokens,
+            output_tokens=output_tokens,
+            metadata={'num_embeddings': len(embeddings_list), 'embedding_dimensions': embedding_dimensions}
+        )
+        
+        # Format OpenAI-compatible response
+        response_data = {
+            'object': 'list',
+            'data': [
+                {
+                    'object': 'embedding',
+                    'index': i,
+                    'embedding': embedding
+                }
+                for i, embedding in enumerate(embeddings_list)
+            ],
+            'model': model.name,
+            'usage': {
+                'prompt_tokens': total_tokens,
+                'total_tokens': total_tokens
+            }
+        }
+        
+        return JsonResponse(response_data)
+    
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        error_message = str(e)
+        
+        # Log the full traceback for debugging
+        print(f"Error in embeddings: {error_message}")
+        print(error_trace)
+        
+        # Mark request as failed if it exists
+        if 'llm_request' in locals():
+            llm_request.mark_failed(error_message)
+        
+        return JsonResponse({
+            'error': {
+                'message': f'Internal server error: {error_message}',
+                'type': 'server_error',
+                'code': 'internal_error'
+            }
+        }, status=500)

@@ -27,6 +27,7 @@ def get_models(request):
                 'name': m.name,
                 'description': m.description,
                 'model_path': m.model_path,
+                'model_type': m.model_type,
                 'provider': m.provider,
                 'is_active': m.is_active,
                 'alwayswarm': m.alwayswarm,
@@ -56,6 +57,7 @@ def create_model(request):
             name=data['name'],
             description=data.get('description', ''),
             model_path=data['model_path'],
+            model_type=data.get('model_type', 'chat'),
             provider=data.get('provider', 'vllm'),
             is_active=data.get('is_active', True),
             alwayswarm=data.get('alwayswarm', False),
@@ -86,6 +88,8 @@ def update_model(request, model_id):
             model.description = data['description']
         if 'model_path' in data:
             model.model_path = data['model_path']
+        if 'model_type' in data:
+            model.model_type = data['model_type']
         if 'provider' in data:
             model.provider = data['provider']
         if 'is_active' in data:

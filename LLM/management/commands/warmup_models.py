@@ -9,6 +9,8 @@ from LLM.utils import (
     get_or_create_engine,
     generate_with_vllm,
     generate_with_ollama,
+    embed_with_vllm,
+    embed_with_ollama,
     format_messages_for_ollama,
     count_tokens_approximate,
     format_messages_for_prompt
@@ -43,52 +45,91 @@ class Command(BaseCommand):
         
         for model in models_to_warm:
             try:
-                self.stdout.write(f'Warming up model: {model.name}...')
+                self.stdout.write(f'Warming up model: {model.name} (type: {model.model_type})...')
                 
-                # Create a minimal LLMRequest record (optional, for tracking)
-                llm_request = LLMRequest.objects.create(
-                    api_key=api_key,
-                    model=model,
-                    prompt=warmup_prompt,
-                    system_prompt="",
-                    temperature=model.default_temperature,
-                    max_tokens=10,  # Very short response
-                    stream=False,
-                    request_metadata={'warmup': True}
-                )
-                
-                llm_request.mark_started()
-                input_tokens = count_tokens_approximate(warmup_prompt)
-                
-                # Route to appropriate provider
-                if model.provider == 'vllm':
-                    engine = get_or_create_engine(model)
-                    sampling_params = SamplingParams(
-                        temperature=model.default_temperature,
-                        max_tokens=10,
-                        top_p=1.0,
-                        top_k=-1,
-                    )
-                    generated_text, input_tokens_actual, output_tokens = generate_with_vllm(
-                        engine, warmup_prompt, sampling_params
+                # Different warmup based on model type
+                if model.model_type == 'embedding':
+                    # Warmup for embedding models
+                    llm_request = LLMRequest.objects.create(
+                        api_key=api_key,
+                        model=model,
+                        prompt=warmup_prompt,
+                        system_prompt="",
+                        temperature=None,
+                        max_tokens=None,
+                        stream=False,
+                        request_metadata={'warmup': True, 'type': 'embedding'}
                     )
                     
-                elif model.provider == 'ollama':
-                    formatted_messages = format_messages_for_ollama(messages, "")
-                    generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
-                        model, warmup_prompt, model.default_temperature, 10,
-                        None, None, formatted_messages, ""
+                    llm_request.mark_started()
+                    
+                    # Generate embedding
+                    if model.provider == 'vllm':
+                        engine = get_or_create_engine(model)
+                        embeddings_list, total_tokens = embed_with_vllm(engine, [warmup_prompt])
+                        embedding_dimensions = len(embeddings_list[0]) if embeddings_list else 0
+                        output_tokens = embedding_dimensions
+                        generated_text = f"Generated embedding with {embedding_dimensions} dimensions"
+                    elif model.provider == 'ollama':
+                        embeddings_list, total_tokens = embed_with_ollama(model, [warmup_prompt])
+                        embedding_dimensions = len(embeddings_list[0]) if embeddings_list else 0
+                        output_tokens = embedding_dimensions
+                        generated_text = f"Generated embedding with {embedding_dimensions} dimensions"
+                    else:
+                        raise ValueError(f"Unknown provider: {model.provider}")
+                    
+                    # Mark as completed
+                    llm_request.mark_completed(
+                        response_text=generated_text,
+                        input_tokens=total_tokens,
+                        output_tokens=output_tokens,
+                        metadata={'warmup': True, 'embedding_dimensions': embedding_dimensions}
                     )
                 else:
-                    raise ValueError(f"Unknown provider: {model.provider}")
-                
-                # Mark as completed
-                llm_request.mark_completed(
-                    response_text=generated_text,
-                    input_tokens=input_tokens_actual,
-                    output_tokens=output_tokens,
-                    metadata={'warmup': True, 'finish_reason': 'stop'}
-                )
+                    # Warmup for chat models
+                    llm_request = LLMRequest.objects.create(
+                        api_key=api_key,
+                        model=model,
+                        prompt=warmup_prompt,
+                        system_prompt="",
+                        temperature=model.default_temperature,
+                        max_tokens=10,  # Very short response
+                        stream=False,
+                        request_metadata={'warmup': True}
+                    )
+                    
+                    llm_request.mark_started()
+                    input_tokens = count_tokens_approximate(warmup_prompt)
+                    
+                    # Route to appropriate provider
+                    if model.provider == 'vllm':
+                        engine = get_or_create_engine(model)
+                        sampling_params = SamplingParams(
+                            temperature=model.default_temperature,
+                            max_tokens=10,
+                            top_p=1.0,
+                            top_k=-1,
+                        )
+                        generated_text, input_tokens_actual, output_tokens = generate_with_vllm(
+                            engine, warmup_prompt, sampling_params
+                        )
+                        
+                    elif model.provider == 'ollama':
+                        formatted_messages = format_messages_for_ollama(messages, "")
+                        generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
+                            model, warmup_prompt, model.default_temperature, 10,
+                            None, None, formatted_messages, ""
+                        )
+                    else:
+                        raise ValueError(f"Unknown provider: {model.provider}")
+                    
+                    # Mark as completed
+                    llm_request.mark_completed(
+                        response_text=generated_text,
+                        input_tokens=input_tokens_actual,
+                        output_tokens=output_tokens,
+                        metadata={'warmup': True, 'finish_reason': 'stop'}
+                    )
                 
                 self.stdout.write(
                     self.style.SUCCESS(f'✓ Successfully warmed up {model.name}')

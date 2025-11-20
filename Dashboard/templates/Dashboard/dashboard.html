@@ -218,6 +218,7 @@
 
 {% block navbar %}
 <div class="navbar-links">
+    <a href="/">HOME</a>
     <a href="/dashboard/">DASHBOARD</a>
     <a href="/admin/">ADMIN TERMINAL</a>
     <a href="/api-docs/">API DOCS</a>
@@ -286,6 +287,7 @@
                         <thead>
                             <tr>
                                 <th>NAME</th>
+                                <th>TYPE</th>
                                 <th>PROVIDER</th>
                                 <th>STATUS</th>
                                 <th>ALWAYS WARM</th>
@@ -428,6 +430,13 @@
                 <div class="form-group">
                     <label>MODEL PATH</label>
                     <input type="text" id="modelPath" name="model_path" required>
+                </div>
+                <div class="form-group">
+                    <label>MODEL TYPE</label>
+                    <select id="modelType" name="model_type">
+                        <option value="chat">Chat</option>
+                        <option value="embedding">Embedding</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>PROVIDER</label>
@@ -856,6 +865,7 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${model.name}</td>
+                        <td>${(model.model_type || 'chat').toUpperCase()}</td>
                         <td>${model.provider.toUpperCase()}</td>
                         <td>${model.is_active ? '<span style="color: #4ade80;">ACTIVE</span>' : '<span style="color: #888;">INACTIVE</span>'}</td>
                         <td>${model.alwayswarm ? '<span style="color: #4ade80;">YES</span>' : '<span style="color: #888;">NO</span>'}</td>
@@ -993,6 +1003,7 @@
                             document.getElementById('modelName').value = model.name;
                             document.getElementById('modelDescription').value = model.description || '';
                             document.getElementById('modelPath').value = model.model_path;
+                            document.getElementById('modelType').value = model.model_type || 'chat';
                             document.getElementById('modelProvider').value = model.provider;
                             document.getElementById('modelMaxContext').value = model.max_context_length;
                             document.getElementById('modelTemperature').value = model.default_temperature;
@@ -1089,6 +1100,7 @@
                 name: document.getElementById('modelName').value,
                 description: document.getElementById('modelDescription').value,
                 model_path: document.getElementById('modelPath').value,
+                model_type: document.getElementById('modelType').value,
                 provider: document.getElementById('modelProvider').value,
                 max_context_length: parseInt(document.getElementById('modelMaxContext').value),
                 default_temperature: parseFloat(document.getElementById('modelTemperature').value),

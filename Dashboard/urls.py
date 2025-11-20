@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/keys/create/', api_views.create_api_key, name='api_create_api_key'),
     path('api/keys/<int:api_key_id>/update/', api_views.update_api_key, name='api_update_api_key'),
     path('api/keys/<int:api_key_id>/delete/', api_views.delete_api_key, name='api_delete_api_key'),
+    path('api/keys/<int:api_key_id>/full/', api_views.get_api_key_full, name='api_get_api_key_full'),
     path('api/chart-data/', api_views.get_chart_data, name='api_get_chart_data'),
 ]
 

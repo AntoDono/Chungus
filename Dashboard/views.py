@@ -25,7 +25,7 @@ def api_docs(request):
     return render(request, 'Dashboard/api_docs.html')
 
 
-@login_required
+@login_required(login_url='/admin/login/')
 @user_passes_test(superuser_required, login_url='/admin/login/')
 def dashboard(request):
     """

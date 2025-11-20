@@ -60,6 +60,7 @@
             padding: 0.75em;
             text-align: left;
             border-bottom: 1px solid #333;
+            vertical-align: middle;
         }
         th {
             color: #4ade80;
@@ -67,6 +68,24 @@
         }
         td {
             color: #ffffff;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25em 0.5em;
+            border-radius: 2px;
+        }
+        .api-key-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .api-key-actions {
+            display: flex;
+            gap: 0.5em;
+            align-items: center;
+        }
+        .btn-small {
+            padding: 0.3em 0.6em;
+            font-size: 0.8em;
         }
         .btn {
             padding: 0.5em 1em;
@@ -364,11 +383,9 @@
                     <label>OLLAMA BASE URL (Optional)</label>
                     <input type="text" id="modelOllamaUrl" name="ollama_base_url" value="http://localhost:11434">
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="modelIsActive" name="is_active" checked>
-                        ACTIVE
-                    </label>
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em;">
+                    <label style="margin-bottom: 0;">ACTIVE</label>
+                    <input type="checkbox" id="modelIsActive" name="is_active" checked>
                 </div>
                 <button type="submit" class="btn btn-primary">SAVE</button>
                 <button type="button" class="btn" onclick="closeModelModal()">CANCEL</button>
@@ -399,15 +416,23 @@
                     <label>RATE LIMIT PER HOUR</label>
                     <input type="number" id="apiKeyRateHour" name="rate_limit_per_hour" value="1000">
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="apiKeyIsActive" name="is_active" checked>
-                        ACTIVE
-                    </label>
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em;">
+                    <label style="margin-bottom: 0;">ACTIVE</label>
+                    <input type="checkbox" id="apiKeyIsActive" name="is_active" checked>
                 </div>
                 <div id="apiKeyDisplay" style="display: none; padding: 1em; background: #111; border: 1px solid #333; margin-bottom: 1em;">
                     <strong style="color: #4ade80;">NEW API KEY:</strong>
                     <div style="color: #ffffff; word-break: break-all; margin-top: 0.5em;" id="apiKeyValue"></div>
+                </div>
+                <div id="apiKeyRevealSection" style="display: none; margin-bottom: 1em;">
+                    <div class="form-group">
+                        <label>API KEY</label>
+                        <div style="display: flex; gap: 0.5em; align-items: center;">
+                            <input type="text" id="apiKeyRevealed" readonly style="flex: 1; background: #111; border: 1px solid #333; color: #ffffff; font-family: 'Courier New', monospace; padding: 0.5em;">
+                            <button type="button" class="btn btn-small" onclick="copyRevealedApiKey()">COPY</button>
+                            <button type="button" class="btn btn-small" onclick="revealApiKeyInModal()">REVEAL</button>
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">SAVE</button>
                 <button type="button" class="btn" onclick="closeApiKeyModal()">CANCEL</button>
@@ -537,6 +562,9 @@
             }
         }
 
+        // Store revealed keys
+        const revealedKeys = new Map();
+
         // Load API keys
         async function loadApiKeys() {
             try {
@@ -548,22 +576,83 @@
                 data.api_keys.forEach(key => {
                     const row = document.createElement('tr');
                     const lastUsed = key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never';
+                    const isRevealed = revealedKeys.has(key.id);
+                    const displayKey = isRevealed ? revealedKeys.get(key.id) : key.key;
+                    const statusClass = key.is_active ? 'status-badge' : 'status-badge';
+                    const statusColor = key.is_active ? '#4ade80' : '#888';
+                    
                     row.innerHTML = `
                         <td>${key.name}</td>
-                        <td>${key.key}</td>
-                        <td>${key.is_active ? '<span style="color: #4ade80;">ACTIVE</span>' : '<span style="color: #888;">INACTIVE</span>'}</td>
+                        <td class="api-key-cell">
+                            <span id="key-${key.id}">${displayKey}</span>
+                        </td>
+                        <td><span class="status-badge" style="color: ${statusColor};">${key.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
                         <td>${key.total_requests || 0}</td>
                         <td>${(key.total_tokens_processed || 0).toLocaleString()}</td>
                         <td>${lastUsed}</td>
                         <td>
-                            <button class="btn" onclick="editApiKey(${key.id})">EDIT</button>
-                            <button class="btn btn-danger" onclick="deleteApiKey(${key.id})">DELETE</button>
+                            <div class="api-key-actions">
+                                <button class="btn btn-small" onclick="editApiKey(${key.id})">EDIT</button>
+                                <button class="btn btn-small btn-danger" onclick="deleteApiKey(${key.id})">DELETE</button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(row);
                 });
             } catch (error) {
                 console.error('Error loading API keys:', error);
+            }
+        }
+
+        // Reveal full API key
+        async function revealApiKey(id) {
+            try {
+                const response = await fetch(`/api/keys/${id}/full/`);
+                const data = await response.json();
+                if (data.success) {
+                    revealedKeys.set(id, data.key);
+                    loadApiKeys(); // Reload to update display
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Copy API key to clipboard
+        async function copyApiKey(id) {
+            const fullKey = revealedKeys.get(id);
+            if (!fullKey) {
+                // If not revealed, fetch it first
+                try {
+                    const response = await fetch(`/api/keys/${id}/full/`);
+                    const data = await response.json();
+                    if (data.success) {
+                        revealedKeys.set(id, data.key);
+                        await navigator.clipboard.writeText(data.key);
+                        alert('API key copied to clipboard!');
+                        loadApiKeys();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            } else {
+                try {
+                    await navigator.clipboard.writeText(fullKey);
+                    alert('API key copied to clipboard!');
+                } catch (error) {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = fullKey;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('API key copied to clipboard!');
+                }
             }
         }
 
@@ -608,6 +697,8 @@
             document.getElementById('apiKeyForm').reset();
             document.getElementById('apiKeyId').value = '';
             document.getElementById('apiKeyDisplay').style.display = 'none';
+            document.getElementById('apiKeyRevealSection').style.display = id ? 'block' : 'none';
+            document.getElementById('apiKeyRevealed').value = '';
             if (id) {
                 fetch(`/api/keys/`)
                     .then(r => r.json())
@@ -628,6 +719,45 @@
         function closeApiKeyModal() {
             document.getElementById('apiKeyModal').style.display = 'none';
             editingApiKeyId = null;
+        }
+
+        // Reveal API key in modal
+        async function revealApiKeyInModal() {
+            if (!editingApiKeyId) return;
+            try {
+                const response = await fetch(`/api/keys/${editingApiKeyId}/full/`);
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('apiKeyRevealed').value = data.key;
+                    revealedKeys.set(editingApiKeyId, data.key);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Copy revealed API key from modal
+        async function copyRevealedApiKey() {
+            const keyValue = document.getElementById('apiKeyRevealed').value;
+            if (!keyValue) {
+                alert('No API key to copy. Please reveal it first.');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(keyValue);
+                alert('API key copied to clipboard!');
+            } catch (error) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = keyValue;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('API key copied to clipboard!');
+            }
         }
 
         // Form submissions

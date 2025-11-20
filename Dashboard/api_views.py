@@ -214,6 +214,21 @@ def delete_api_key(request, api_key_id):
         return JsonResponse({'success': False, 'error': 'API key not found'}, status=404)
 
 
+@login_required
+@user_passes_test(superuser_required)
+@require_http_methods(["GET"])
+def get_api_key_full(request, api_key_id):
+    """Get the full API key (for reveal functionality)"""
+    try:
+        api_key = APIKey.objects.get(id=api_key_id)
+        return JsonResponse({
+            'success': True,
+            'key': api_key.key
+        })
+    except APIKey.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'API key not found'}, status=404)
+
+
 from django.db.models import Q
 
 from django.db.models import Q

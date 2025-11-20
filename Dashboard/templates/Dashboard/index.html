@@ -1,0 +1,107 @@
+{% extends 'Dashboard/base.html' %}
+
+{% block title %}CHUNGUS{% endblock %}
+
+{% block navbar %}
+<div style="display: flex; gap: 2em;">
+    <a href="/dashboard/">DASHBOARD</a>
+    <a href="/admin/">ADMIN TERMINAL</a>
+    <a href="/api-docs/">API DOCS</a>
+</div>
+{% endblock %}
+
+{% block content %}
+        <div class="hero-section">
+            <div class="hero-title">CHUNGUS</div>
+            <div class="hero-subtitle">
+                Computing Hybrid Utilization Network for<br>
+                GPU Unified Scheduling
+            </div>
+            <div class="hero-creator">
+                <a href="https://youweizhen.com" target="_blank" class="creator-name">Youwei Zhen</a>
+                <span class="separator">//</span>
+                <a href="https://www.linkedin.com/in/youwei-zhen-a8b662213/" target="_blank">Linkedin</a>
+                <span class="separator">//</span>
+                <a href="https://github.com/antodono" target="_blank">Github</a>
+            </div>
+            <div class="status">
+                <div class="status-item">
+                    <span class="label">STATUS:</span>
+                    <span>ONLINE</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">TIME:</span>
+                    <span id="time"></span>
+                </div>
+                <div class="status-item">
+                    <span class="label">VERSION:</span>
+                    <span>1.0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content fade-in-content">
+            <div class="section">
+                <h2>ABOUT THE SYSTEM</h2>
+                
+                <p class="intro">
+                    CHUNGUS (Computing Hybrid Utilization Network for GPU Unified Scheduling) is a high-performance 
+                    personal computing infrastructure designed for advanced GPU workload management and distributed processing. 
+                    The system provides intelligent resource allocation, real-time monitoring, and seamless coordination 
+                    across multiple GPU units for optimal computational efficiency.
+                </p>
+
+                <div class="system-details">
+                    <div class="detail-section">
+                        <h3>LLM HOSTING</h3>
+                        <p>
+                            CHUNGUS provides dedicated infrastructure for hosting and serving large language models with 
+                            optimized inference pipelines. The system supports multiple concurrent model deployments with 
+                            dynamic memory allocation, enabling efficient multi-model serving and fine-tuning workflows. 
+                            Advanced batching and quantization techniques ensure maximum throughput while maintaining 
+                            low-latency response times for real-time applications.
+                        </p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>PROTEIN FOLDING</h3>
+                        <p>
+                            Specialized computational pipelines for protein structure prediction and folding simulations 
+                            using state-of-the-art algorithms. The system leverages GPU acceleration for molecular dynamics 
+                            simulations, enabling rapid analysis of protein conformations and interactions. CHUNGUS supports 
+                            distributed folding calculations across multiple GPUs, dramatically reducing computation time 
+                            for complex protein structures and enabling large-scale structural biology research.
+                        </p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>SCHEDULING</h3>
+                        <p>
+                            Intelligent unified scheduling framework that dynamically allocates GPU resources across 
+                            diverse workloads including LLM inference, protein folding simulations, and other computational 
+                            tasks. The scheduler employs priority-based queuing, workload-aware resource allocation, and 
+                            predictive load balancing to maximize GPU utilization. Real-time monitoring and adaptive 
+                            scheduling ensure optimal performance for both batch processing and interactive workloads.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('time').textContent = timeString;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+</script>
+{% endblock %}

@@ -1,0 +1,683 @@
+{% extends 'Dashboard/base.html' %}
+
+{% block title %}CHUNGUS - API Documentation{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-docs-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2em;
+    }
+
+    .api-section {
+        margin: 3em 0;
+        padding: 2em;
+        border: 1px solid #333333;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .api-section h2 {
+        color: #4ade80;
+        font-size: 1.8em;
+        letter-spacing: 0.1em;
+        margin-bottom: 1em;
+        border-bottom: 1px solid #333333;
+        padding-bottom: 0.5em;
+    }
+
+    .api-section h3 {
+        color: #4ade80;
+        font-size: 1.3em;
+        letter-spacing: 0.05em;
+        margin-top: 2em;
+        margin-bottom: 1em;
+    }
+
+    .endpoint-info {
+        background: rgba(74, 222, 128, 0.1);
+        border-left: 4px solid #4ade80;
+        padding: 1em;
+        margin: 1em 0;
+    }
+
+    .endpoint-info code {
+        color: #4ade80;
+        font-size: 1.1em;
+    }
+
+    .code-block {
+        background: #111;
+        border: 1px solid #333;
+        padding: 1.5em;
+        margin: 1em 0;
+        overflow-x: auto;
+        position: relative;
+    }
+
+    .code-block pre {
+        margin: 0;
+        color: #ffffff;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        line-height: 1.6;
+    }
+
+    .copy-btn {
+        position: absolute;
+        top: 0.5em;
+        right: 0.5em;
+        padding: 0.5em 1em;
+        background: #4ade80;
+        color: #000000;
+        border: none;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8em;
+        transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+        background: #3acf70;
+    }
+
+    .code-block {
+        position: relative;
+    }
+
+    .param-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1em 0;
+    }
+
+    .param-table th,
+    .param-table td {
+        padding: 0.75em;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+
+    .param-table th {
+        color: #4ade80;
+        font-weight: bold;
+    }
+
+    .param-table td {
+        color: #ffffff;
+    }
+
+    .param-table code {
+        color: #4ade80;
+        background: rgba(74, 222, 128, 0.1);
+        padding: 0.2em 0.4em;
+        border-radius: 2px;
+    }
+
+    .note {
+        background: rgba(74, 222, 128, 0.1);
+        border-left: 4px solid #4ade80;
+        padding: 1em;
+        margin: 1em 0;
+        color: #ffffff;
+    }
+
+    .note strong {
+        color: #4ade80;
+    }
+
+    .code-example-wrapper {
+        margin: 1em 0;
+    }
+
+    .language-switcher {
+        display: flex;
+        gap: 0.5em;
+        margin-bottom: 0.5em;
+        border-bottom: 1px solid #333;
+        padding-bottom: 0.5em;
+    }
+
+    .lang-btn {
+        padding: 0.5em 1em;
+        background: transparent;
+        border: 1px solid #333;
+        color: #888;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85em;
+        transition: all 0.2s ease;
+    }
+
+    .lang-btn:hover {
+        color: #ffffff;
+        border-color: #4ade80;
+    }
+
+    .lang-btn.active {
+        color: #4ade80;
+        border-color: #4ade80;
+        background: rgba(74, 222, 128, 0.1);
+    }
+
+    .code-example {
+        display: none;
+    }
+
+    .code-example.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>API DOCUMENTATION</h1>
+</div>
+
+<div class="content">
+    <div class="api-docs-container">
+        <div class="api-section">
+            <h2>OVERVIEW</h2>
+            <p style="color: #ffffff; line-height: 1.8; margin-bottom: 1em;">
+                CHUNGUS provides an OpenAI-compatible API for chat completions. The API supports both streaming
+                and non-streaming responses, allowing you to integrate LLM capabilities into your applications
+                using the same interface as OpenAI's API.
+            </p>
+            <div class="endpoint-info">
+                <strong style="color: #4ade80;">Base URL:</strong> <code id="base-url-display">Loading...</code><br>
+                <strong style="color: #4ade80;">Authentication:</strong> Bearer token via <code>Authorization</code>
+                header
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>NON-STREAMING CHAT COMPLETIONS</h2>
+
+            <div class="endpoint-info">
+                <strong style="color: #4ade80;">Endpoint:</strong> <code>POST /api/v1/chat/completions</code>
+            </div>
+
+            <h3>Request Parameters</h3>
+            <table class="param-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>model</code></td>
+                        <td>string</td>
+                        <td>Yes</td>
+                        <td>Name of the model to use (e.g., "llama-2-7b-chat")</td>
+                    </tr>
+                    <tr>
+                        <td><code>messages</code></td>
+                        <td>array</td>
+                        <td>Yes</td>
+                        <td>Array of message objects with role and content</td>
+                    </tr>
+                    <tr>
+                        <td><code>stream</code></td>
+                        <td>boolean</td>
+                        <td>No</td>
+                        <td>Set to false or omit for non-streaming (default: false)</td>
+                    </tr>
+                    <tr>
+                        <td><code>temperature</code></td>
+                        <td>float</td>
+                        <td>No</td>
+                        <td>Sampling temperature (0.0 to 2.0, default: model default)</td>
+                    </tr>
+                    <tr>
+                        <td><code>max_tokens</code></td>
+                        <td>integer</td>
+                        <td>No</td>
+                        <td>Maximum tokens to generate (default: model default)</td>
+                    </tr>
+                    <tr>
+                        <td><code>top_p</code></td>
+                        <td>float</td>
+                        <td>No</td>
+                        <td>Nucleus sampling parameter</td>
+                    </tr>
+                    <tr>
+                        <td><code>top_k</code></td>
+                        <td>integer</td>
+                        <td>No</td>
+                        <td>Top-k sampling parameter</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Example Request</h3>
+            <div class="code-example-wrapper" data-example="nonstream">
+                <div class="language-switcher">
+                    <button class="lang-btn active" onclick="switchLanguage('nonstream', 'curl')">cURL</button>
+                    <button class="lang-btn" onclick="switchLanguage('nonstream', 'python')">Python</button>
+                    <button class="lang-btn" onclick="switchLanguage('nonstream', 'js')">JavaScript</button>
+                </div>
+                <div class="code-example active" data-lang="curl">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">curl -X POST <span class="base-url">https://your-domain.com/api/v1</span>/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "llama-2-7b-chat",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      },
+      {
+        "role": "user",
+        "content": "What is the capital of France?"
+      }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "stream": false
+  }'</pre>
+                    </div>
+                </div>
+                        <div class="code-example" data-lang="python">
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                                <pre class="code-content">import requests
+
+url = "<span class="base-url">https://your-domain.com/api/v1</span>/chat/completions"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_API_KEY"
+}
+data = {
+    "model": "llama-2-7b-chat",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant."
+        },
+        {
+            "role": "user",
+            "content": "What is the capital of France?"
+        }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "stream": False
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+print(result["choices"][0]["message"]["content"])</pre>
+                    </div>
+                </div>
+                <div class="code-example" data-lang="js">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">const response = await fetch('<span class="base-url">https://your-domain.com/api/v1</span>/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY'
+  },
+  body: JSON.stringify({
+    model: 'llama-2-7b-chat',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant.'
+      },
+      {
+        role: 'user',
+        content: 'What is the capital of France?'
+      }
+    ],
+    temperature: 0.7,
+    max_tokens: 512,
+    stream: false
+  })
+});
+
+const result = await response.json();
+console.log(result.choices[0].message.content);</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Response Format</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre id="response-nonstream">{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1694268190,
+  "model": "llama-2-7b-chat",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The capital of France is Paris."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 25,
+    "completion_tokens": 8,
+    "total_tokens": 33
+  }
+}</pre>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>STREAMING CHAT COMPLETIONS</h2>
+
+            <div class="endpoint-info">
+                <strong style="color: #4ade80;">Endpoint:</strong> <code>POST /api/v1/chat/completions</code><br>
+                <strong style="color: #4ade80;">Note:</strong> Set <code>"stream": true</code> in the request body
+            </div>
+
+            <h3>Example Request</h3>
+            <div class="code-example-wrapper" data-example="stream">
+                <div class="language-switcher">
+                    <button class="lang-btn active" onclick="switchLanguage('stream', 'curl')">cURL</button>
+                    <button class="lang-btn" onclick="switchLanguage('stream', 'python')">Python</button>
+                    <button class="lang-btn" onclick="switchLanguage('stream', 'js')">JavaScript</button>
+                </div>
+                <div class="code-example active" data-lang="curl">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">curl -X POST <span class="base-url">https://your-domain.com/api/v1</span>/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "llama-2-7b-chat",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a short story about a robot."
+      }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "stream": true
+  }'</pre>
+                    </div>
+                </div>
+                <div class="code-example" data-lang="python">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre>import requests
+import json
+
+url = "<span class="base-url">https://your-domain.com/api/v1</span>/chat/completions"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_API_KEY"
+}
+data = {
+    "model": "llama-2-7b-chat",
+    "messages": [
+        {
+            "role": "user",
+            "content": "Write a short story about a robot."
+        }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "stream": True
+}
+
+response = requests.post(url, headers=headers, json=data, stream=True)
+
+for line in response.iter_lines():
+    if line:
+        line = line.decode('utf-8')
+        if line.startswith('data: '):
+            data_str = line[6:]  # Remove 'data: ' prefix
+            if data_str == '[DONE]':
+                break
+            try:
+                chunk = json.loads(data_str)
+                if 'choices' in chunk and len(chunk['choices']) > 0:
+                    delta = chunk['choices'][0].get('delta', {})
+                    if 'content' in delta:
+                        print(delta['content'], end='', flush=True)
+            except json.JSONDecodeError:
+                continue</pre>
+                    </div>
+                </div>
+                <div class="code-example" data-lang="js">
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                        <pre class="code-content">const response = await fetch('<span class="base-url">https://your-domain.com/api/v1</span>/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY'
+  },
+  body: JSON.stringify({
+    model: 'llama-2-7b-chat',
+    messages: [
+      {
+        role: 'user',
+        content: 'Write a short story about a robot.'
+      }
+    ],
+    temperature: 0.7,
+    max_tokens: 512,
+    stream: true
+  })
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\\n');
+  
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6);
+      if (data === '[DONE]') break;
+      
+      try {
+        const json = JSON.parse(data);
+        if (json.choices && json.choices[0].delta.content) {
+          process.stdout.write(json.choices[0].delta.content);
+        }
+      } catch (e) {
+        // Skip invalid JSON
+      }
+    }
+  }
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Streaming Response Format</h3>
+            <p style="color: #ffffff; margin-bottom: 1em;">
+                Streaming responses use Server-Sent Events (SSE) format. Each chunk is a JSON object prefixed with
+                <code>data: </code>.
+            </p>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre id="response-stream">data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":"The"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":" capital"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":" of"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":" France"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":" is"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{"content":" Paris"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":25,"completion_tokens":8,"total_tokens":33}}
+
+data: [DONE]</pre>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>MESSAGE FORMAT</h2>
+            <p style="color: #ffffff; margin-bottom: 1em;">
+                Messages are arrays of objects with <code>role</code> and <code>content</code> fields.
+            </p>
+            <table class="param-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>system</code></td>
+                        <td>System message that sets the behavior of the assistant (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><code>user</code></td>
+                        <td>User message containing the input/question</td>
+                    </tr>
+                    <tr>
+                        <td><code>assistant</code></td>
+                        <td>Assistant message (used for multi-turn conversations)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Example Multi-Turn Conversation</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre id="multiturn">{
+  "model": "llama-2-7b-chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "What is 2+2?"
+    },
+    {
+      "role": "assistant",
+      "content": "2+2 equals 4."
+    },
+    {
+      "role": "user",
+      "content": "What about 3+3?"
+    }
+  ],
+  "temperature": 0.7,
+  "max_tokens": 512
+}</pre>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>ERROR HANDLING</h2>
+            <p style="color: #ffffff; margin-bottom: 1em;">
+                Errors are returned in the following format:
+            </p>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre id="error-format">{
+  "error": {
+    "message": "Model 'invalid-model' not found or not active",
+    "type": "invalid_request_error",
+    "code": "model_not_found"
+  }
+}</pre>
+            </div>
+            <div class="note">
+                <strong>Common Error Codes:</strong><br>
+                • <code>model_not_found</code> - The specified model doesn't exist or is inactive<br>
+                • <code>invalid_messages</code> - Messages array is empty or invalid<br>
+                • <code>invalid_json</code> - Request body is not valid JSON<br>
+                • <code>rate_limit_exceeded</code> - API key rate limit exceeded
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyCode(button) {
+        const codeBlock = button.nextElementSibling;
+        const text = codeBlock.textContent;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = button.textContent;
+            button.textContent = 'COPIED!';
+            button.style.background = '#3acf70';
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '#4ade80';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
+    }
+
+    function switchLanguage(exampleId, lang) {
+        const wrapper = document.querySelector(`[data-example="${exampleId}"]`);
+        if (!wrapper) return;
+
+        // Update button states
+        const buttons = wrapper.querySelectorAll('.lang-btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+
+        // Show selected language button as active
+        const langMap = { 'curl': 0, 'python': 1, 'js': 2 };
+        buttons[langMap[lang]].classList.add('active');
+
+        // Show/hide code examples
+        const examples = wrapper.querySelectorAll('.code-example');
+        examples.forEach(example => {
+            if (example.dataset.lang === lang) {
+                example.classList.add('active');
+            } else {
+                example.classList.remove('active');
+            }
+        });
+    }
+
+    // Update base URLs dynamically
+    function updateBaseUrls() {
+        const baseUrl = window.location.origin + '/api/v1';
+        
+        // Update display
+        const displayElement = document.getElementById('base-url-display');
+        if (displayElement) {
+            displayElement.textContent = baseUrl;
+        }
+        
+        // Update all code examples
+        const baseUrlSpans = document.querySelectorAll('.base-url');
+        baseUrlSpans.forEach(span => {
+            span.textContent = baseUrl;
+        });
+    }
+
+    // Run on page load
+    updateBaseUrls();
+</script>
+{% endblock %}

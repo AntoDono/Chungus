@@ -1,0 +1,790 @@
+{% extends 'Dashboard/base.html' %}
+
+{% block title %}CHUNGUS - Superuser Dashboard{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5em;
+            margin-bottom: 2em;
+        }
+        .stat-card {
+            padding: 1.5em;
+            border: 1px solid #333333;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .stat-card h3 {
+            color: #4ade80;
+            font-size: 0.9em;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5em;
+        }
+        .stat-card .value {
+            color: #ffffff;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .chart-container {
+            margin: 2em 0;
+            padding: 1.5em;
+            border: 1px solid #333333;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .chart-container h3 {
+            color: #4ade80;
+            margin-bottom: 1em;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        .management-section {
+            margin: 2em 0;
+        }
+        .management-section h2 {
+            color: #4ade80;
+            margin-bottom: 1em;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75em;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            color: #4ade80;
+            font-weight: bold;
+        }
+        td {
+            color: #ffffff;
+        }
+        .btn {
+            padding: 0.5em 1em;
+            border: 1px solid #4ade80;
+            background: transparent;
+            color: #4ade80;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s ease;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .btn:hover {
+            background: #4ade80;
+            color: #000000;
+        }
+        .btn-primary {
+            background: #4ade80;
+            color: #000000;
+        }
+        .btn-primary:hover {
+            background: #3acf70;
+        }
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #ffffff;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .modal-content {
+            background: #000000;
+            margin: 5% auto;
+            padding: 2em;
+            border: 1px solid #333;
+            width: 90%;
+            max-width: 600px;
+        }
+        .modal-header {
+            color: #4ade80;
+            margin-bottom: 1em;
+        }
+        .form-group {
+            margin-bottom: 1em;
+        }
+        .form-group label {
+            display: block;
+            color: #4ade80;
+            margin-bottom: 0.5em;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.5em;
+            background: #111;
+            border: 1px solid #333;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+        }
+        .close {
+            color: #888;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #ffffff;
+        }
+        .navbar-protein-folding {
+            display: flex;
+            align-items: center;
+        }
+        .navbar-protein-folding .btn {
+            padding: 0.5em 1em;
+            font-size: 0.85em;
+        }
+        .navbar-protein-folding .btn-primary {
+            color: #222222;
+        }
+        .navbar-links {
+            display: flex;
+            gap: 2em;
+        }
+        .header-status {
+            display: flex;
+            gap: 2em;
+            margin-top: 1em;
+            flex-wrap: wrap;
+        }
+        .header-status .status-item {
+            color: #ffffff;
+            font-size: 0.9em;
+            letter-spacing: 0.05em;
+        }
+        .header-status .status-item .label {
+            color: #4ade80;
+            margin-right: 0.5em;
+        }
+        @media (max-width: 768px) {
+            .top-navbar {
+                flex-direction: column;
+                gap: 1em;
+                align-items: flex-start;
+            }
+            .navbar-status {
+                flex-direction: column;
+                gap: 0.5em;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block navbar %}
+<div class="navbar-links">
+    <a href="/dashboard/">DASHBOARD</a>
+    <a href="/admin/">ADMIN TERMINAL</a>
+    <a href="/api-docs/">API DOCS</a>
+</div>
+{% endblock %}
+
+{% block navbar_extra %}
+<div class="navbar-protein-folding">
+    <a href="https://v8-4.foldingathome.org/machines" target="_blank" class="btn btn-primary">PROTEIN FOLDING</a>
+</div>
+{% endblock %}
+
+{% block content %}
+        <div class="header">
+            <h1>CHUNGUS</h1>
+            <div class="header-status">
+                <div class="status-item">
+                    <span class="label">STATUS:</span>
+                    <span>AUTHENTICATED</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">USER:</span>
+                    <span>{{ user.username }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">TIME:</span>
+                    <span id="time"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Stats Overview -->
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3>ACTIVE MODELS</h3>
+                    <div class="value">{{ active_models }}</div>
+                    <div style="color: #888; font-size: 0.8em;">Total: {{ total_models }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>ACTIVE API KEYS</h3>
+                    <div class="value">{{ active_api_keys }}</div>
+                    <div style="color: #888; font-size: 0.8em;">Total: {{ total_api_keys }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>REQUESTS (24H)</h3>
+                    <div class="value">{{ requests_24h }}</div>
+                    <div style="color: #888; font-size: 0.8em;">Total: {{ total_requests }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>TOTAL TOKENS</h3>
+                    <div class="value">{{ token_stats.total_tokens|default:0|floatformat:0 }}</div>
+                    <div style="color: #888; font-size: 0.8em;">Input: {{ token_stats.total_input|default:0|floatformat:0 }}</div>
+                </div>
+            </div>
+
+            <!-- Model Management -->
+            <div class="management-section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>MODEL MANAGEMENT</h2>
+                    <button class="btn btn-primary" onclick="openModelModal()">ADD MODEL</button>
+                </div>
+                <div class="table-container">
+                    <table id="modelsTable">
+                        <thead>
+                            <tr>
+                                <th>NAME</th>
+                                <th>PROVIDER</th>
+                                <th>STATUS</th>
+                                <th>REQUESTS</th>
+                                <th>TOKENS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modelsTableBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- API Key Management -->
+            <div class="management-section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>API KEY MANAGEMENT</h2>
+                    <button class="btn btn-primary" onclick="openApiKeyModal()">ADD API KEY</button>
+                </div>
+                <div class="table-container">
+                    <table id="apiKeysTable">
+                        <thead>
+                            <tr>
+                                <th>NAME</th>
+                                <th>KEY</th>
+                                <th>STATUS</th>
+                                <th>REQUESTS</th>
+                                <th>TOKENS</th>
+                                <th>LAST USED</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiKeysTableBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <h3>REQUESTS PER HOUR (LAST 24H)</h3>
+                <div class="chart-wrapper">
+                    <canvas id="requestsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>MODEL USAGE</h3>
+                <div class="chart-wrapper">
+                    <canvas id="modelUsageChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    <!-- Model Modal -->
+    <div id="modelModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModelModal()">&times;</span>
+            <h2 class="modal-header" id="modelModalTitle">ADD MODEL</h2>
+            <form id="modelForm">
+                <input type="hidden" id="modelId" name="id">
+                <div class="form-group">
+                    <label>NAME</label>
+                    <input type="text" id="modelName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>DESCRIPTION</label>
+                    <textarea id="modelDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>MODEL PATH</label>
+                    <input type="text" id="modelPath" name="model_path" required>
+                </div>
+                <div class="form-group">
+                    <label>PROVIDER</label>
+                    <select id="modelProvider" name="provider">
+                        <option value="vllm">vLLM</option>
+                        <option value="ollama">Ollama</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>MAX CONTEXT LENGTH</label>
+                    <input type="number" id="modelMaxContext" name="max_context_length" value="4096">
+                </div>
+                <div class="form-group">
+                    <label>DEFAULT TEMPERATURE</label>
+                    <input type="number" id="modelTemperature" name="default_temperature" step="0.1" value="0.7">
+                </div>
+                <div class="form-group">
+                    <label>DEFAULT MAX TOKENS</label>
+                    <input type="number" id="modelMaxTokens" name="default_max_tokens" value="512">
+                </div>
+                <div class="form-group">
+                    <label>HUGGINGFACE TOKEN (Optional)</label>
+                    <input type="text" id="modelHfToken" name="huggingface_token">
+                </div>
+                <div class="form-group">
+                    <label>OLLAMA BASE URL (Optional)</label>
+                    <input type="text" id="modelOllamaUrl" name="ollama_base_url" value="http://localhost:11434">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="modelIsActive" name="is_active" checked>
+                        ACTIVE
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">SAVE</button>
+                <button type="button" class="btn" onclick="closeModelModal()">CANCEL</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeApiKeyModal()">&times;</span>
+            <h2 class="modal-header" id="apiKeyModalTitle">ADD API KEY</h2>
+            <form id="apiKeyForm">
+                <input type="hidden" id="apiKeyId" name="id">
+                <div class="form-group">
+                    <label>NAME</label>
+                    <input type="text" id="apiKeyName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>DESCRIPTION</label>
+                    <textarea id="apiKeyDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>RATE LIMIT PER MINUTE</label>
+                    <input type="number" id="apiKeyRateMin" name="rate_limit_per_minute" value="60">
+                </div>
+                <div class="form-group">
+                    <label>RATE LIMIT PER HOUR</label>
+                    <input type="number" id="apiKeyRateHour" name="rate_limit_per_hour" value="1000">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="apiKeyIsActive" name="is_active" checked>
+                        ACTIVE
+                    </label>
+                </div>
+                <div id="apiKeyDisplay" style="display: none; padding: 1em; background: #111; border: 1px solid #333; margin-bottom: 1em;">
+                    <strong style="color: #4ade80;">NEW API KEY:</strong>
+                    <div style="color: #ffffff; word-break: break-all; margin-top: 0.5em;" id="apiKeyValue"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">SAVE</button>
+                <button type="button" class="btn" onclick="closeApiKeyModal()">CANCEL</button>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        let requestsChart, modelUsageChart;
+        let editingModelId = null;
+        let editingApiKeyId = null;
+
+        // Initialize charts
+        function initCharts() {
+            // Requests Chart
+            const requestsCtx = document.getElementById('requestsChart').getContext('2d');
+            requestsChart = new Chart(requestsCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Requests',
+                        data: [],
+                        borderColor: '#4ade80',
+                        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#888' }, grid: { color: '#333' } },
+                        x: { ticks: { color: '#888' }, grid: { color: '#333' } }
+                    }
+                }
+            });
+
+            // Model Usage Chart
+            const modelCtx = document.getElementById('modelUsageChart').getContext('2d');
+            modelUsageChart = new Chart(modelCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Requests',
+                        data: [],
+                        backgroundColor: '#4ade80'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#888' }, grid: { color: '#333' } },
+                        x: { ticks: { color: '#888' }, grid: { color: '#333' } }
+                    }
+                }
+            });
+
+            loadChartData();
+        }
+
+        // Load chart data
+        async function loadChartData() {
+            try {
+                const response = await fetch('/api/chart-data/');
+                const data = await response.json();
+                
+                // Update requests chart
+                if (data.hourly_requests && data.hourly_requests.length > 0) {
+                    const labels = data.hourly_requests.map(r => {
+                        const date = new Date(r.hour);
+                        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    });
+                    const counts = data.hourly_requests.map(r => r.count);
+                    requestsChart.data.labels = labels;
+                    requestsChart.data.datasets[0].data = counts;
+                    requestsChart.update();
+                }
+
+                // Update model usage chart
+                if (data.model_usage && data.model_usage.length > 0) {
+                    const labels = data.model_usage.map(m => m.name);
+                    const counts = data.model_usage.map(m => m.request_count);
+                    modelUsageChart.data.labels = labels;
+                    modelUsageChart.data.datasets[0].data = counts;
+                    modelUsageChart.update();
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+
+        // Load models
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/models/');
+                const data = await response.json();
+                const tbody = document.getElementById('modelsTableBody');
+                tbody.innerHTML = '';
+                
+                data.models.forEach(model => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${model.name}</td>
+                        <td>${model.provider.toUpperCase()}</td>
+                        <td>${model.is_active ? '<span style="color: #4ade80;">ACTIVE</span>' : '<span style="color: #888;">INACTIVE</span>'}</td>
+                        <td>${model.total_requests || 0}</td>
+                        <td>${(model.total_tokens_processed || 0).toLocaleString()}</td>
+                        <td>
+                            <button class="btn" onclick="editModel(${model.id})">EDIT</button>
+                            <button class="btn btn-danger" onclick="deleteModel(${model.id})">DELETE</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading models:', error);
+            }
+        }
+
+        // Load API keys
+        async function loadApiKeys() {
+            try {
+                const response = await fetch('/api/keys/');
+                const data = await response.json();
+                const tbody = document.getElementById('apiKeysTableBody');
+                tbody.innerHTML = '';
+                
+                data.api_keys.forEach(key => {
+                    const row = document.createElement('tr');
+                    const lastUsed = key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never';
+                    row.innerHTML = `
+                        <td>${key.name}</td>
+                        <td>${key.key}</td>
+                        <td>${key.is_active ? '<span style="color: #4ade80;">ACTIVE</span>' : '<span style="color: #888;">INACTIVE</span>'}</td>
+                        <td>${key.total_requests || 0}</td>
+                        <td>${(key.total_tokens_processed || 0).toLocaleString()}</td>
+                        <td>${lastUsed}</td>
+                        <td>
+                            <button class="btn" onclick="editApiKey(${key.id})">EDIT</button>
+                            <button class="btn btn-danger" onclick="deleteApiKey(${key.id})">DELETE</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading API keys:', error);
+            }
+        }
+
+        // Model modal functions
+        function openModelModal(id = null) {
+            editingModelId = id;
+            document.getElementById('modelModalTitle').textContent = id ? 'EDIT MODEL' : 'ADD MODEL';
+            document.getElementById('modelForm').reset();
+            document.getElementById('modelId').value = '';
+            if (id) {
+                // Load model data
+                fetch(`/api/models/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const model = data.models.find(m => m.id === id);
+                        if (model) {
+                            document.getElementById('modelName').value = model.name;
+                            document.getElementById('modelDescription').value = model.description || '';
+                            document.getElementById('modelPath').value = model.model_path;
+                            document.getElementById('modelProvider').value = model.provider;
+                            document.getElementById('modelMaxContext').value = model.max_context_length;
+                            document.getElementById('modelTemperature').value = model.default_temperature;
+                            document.getElementById('modelMaxTokens').value = model.default_max_tokens;
+                            document.getElementById('modelHfToken').value = model.huggingface_token || '';
+                            document.getElementById('modelOllamaUrl').value = model.ollama_base_url || '';
+                            document.getElementById('modelIsActive').checked = model.is_active;
+                        }
+                    });
+            }
+            document.getElementById('modelModal').style.display = 'block';
+        }
+
+        function closeModelModal() {
+            document.getElementById('modelModal').style.display = 'none';
+            editingModelId = null;
+        }
+
+        // API Key modal functions
+        function openApiKeyModal(id = null) {
+            editingApiKeyId = id;
+            document.getElementById('apiKeyModalTitle').textContent = id ? 'EDIT API KEY' : 'ADD API KEY';
+            document.getElementById('apiKeyForm').reset();
+            document.getElementById('apiKeyId').value = '';
+            document.getElementById('apiKeyDisplay').style.display = 'none';
+            if (id) {
+                fetch(`/api/keys/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const key = data.api_keys.find(k => k.id === id);
+                        if (key) {
+                            document.getElementById('apiKeyName').value = key.name;
+                            document.getElementById('apiKeyDescription').value = key.description || '';
+                            document.getElementById('apiKeyRateMin').value = key.rate_limit_per_minute;
+                            document.getElementById('apiKeyRateHour').value = key.rate_limit_per_hour;
+                            document.getElementById('apiKeyIsActive').checked = key.is_active;
+                        }
+                    });
+            }
+            document.getElementById('apiKeyModal').style.display = 'block';
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+            editingApiKeyId = null;
+        }
+
+        // Form submissions
+        document.getElementById('modelForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('modelName').value,
+                description: document.getElementById('modelDescription').value,
+                model_path: document.getElementById('modelPath').value,
+                provider: document.getElementById('modelProvider').value,
+                max_context_length: parseInt(document.getElementById('modelMaxContext').value),
+                default_temperature: parseFloat(document.getElementById('modelTemperature').value),
+                default_max_tokens: parseInt(document.getElementById('modelMaxTokens').value),
+                huggingface_token: document.getElementById('modelHfToken').value,
+                ollama_base_url: document.getElementById('modelOllamaUrl').value,
+                is_active: document.getElementById('modelIsActive').checked,
+            };
+
+            try {
+                let response;
+                if (editingModelId) {
+                    response = await fetch(`/api/models/${editingModelId}/update/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    response = await fetch('/api/models/create/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                }
+                const result = await response.json();
+                if (result.success) {
+                    closeModelModal();
+                    loadModels();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        document.getElementById('apiKeyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('apiKeyName').value,
+                description: document.getElementById('apiKeyDescription').value,
+                rate_limit_per_minute: parseInt(document.getElementById('apiKeyRateMin').value),
+                rate_limit_per_hour: parseInt(document.getElementById('apiKeyRateHour').value),
+                is_active: document.getElementById('apiKeyIsActive').checked,
+            };
+
+            try {
+                let response;
+                if (editingApiKeyId) {
+                    response = await fetch(`/api/keys/${editingApiKeyId}/update/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    response = await fetch('/api/keys/create/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                }
+                const result = await response.json();
+                if (result.success) {
+                    if (result.key) {
+                        document.getElementById('apiKeyValue').textContent = result.key;
+                        document.getElementById('apiKeyDisplay').style.display = 'block';
+                    }
+                    setTimeout(() => {
+                        closeApiKeyModal();
+                        loadApiKeys();
+                    }, 2000);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        // Delete functions
+        async function deleteModel(id) {
+            if (!confirm('Are you sure you want to delete this model?')) return;
+            try {
+                const response = await fetch(`/api/models/${id}/delete/`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    loadModels();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteApiKey(id) {
+            if (!confirm('Are you sure you want to delete this API key?')) return;
+            try {
+                const response = await fetch(`/api/keys/${id}/delete/`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    loadApiKeys();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function editModel(id) {
+            openModelModal(id);
+        }
+
+        function editApiKey(id) {
+            openApiKeyModal(id);
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modelModal = document.getElementById('modelModal');
+            const apiKeyModal = document.getElementById('apiKeyModal');
+            if (event.target == modelModal) {
+                closeModelModal();
+            }
+            if (event.target == apiKeyModal) {
+                closeApiKeyModal();
+            }
+        }
+
+        // Time update
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('time').textContent = timeString;
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Initialize on load
+        initCharts();
+        loadModels();
+        loadApiKeys();
+        setInterval(loadChartData, 60000); // Refresh charts every minute
+    </script>
+{% endblock %}

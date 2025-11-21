@@ -30,9 +30,15 @@ class Command(BaseCommand):
             return
         
         # Get or create a system API key for warmup requests
-        # We'll use the first active API key, or create a system one
+        # Prefer an API key named "system", otherwise use the first active one
         try:
-            api_key = APIKey.objects.filter(is_active=True).first()
+            # Try to find a "system" API key first
+            api_key = APIKey.objects.filter(name__iexact='system', is_active=True).first()
+            
+            # If no system key found, use the first active API key
+            if not api_key:
+                api_key = APIKey.objects.filter(is_active=True).first()
+            
             if not api_key:
                 self.stdout.write(self.style.WARNING('No active API keys found. Skipping warmup.'))
                 return

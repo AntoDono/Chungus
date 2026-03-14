@@ -267,15 +267,15 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
         "num_predict": int(max_tokens),
     }
     
-    if top_p is not None:
+    if top_p is not None and top_p != 1.0:
         options["top_p"] = float(top_p)
     if top_k is not None and top_k != -1:
         options["top_k"] = int(top_k)
-    if min_p is not None:
+    if min_p is not None and min_p != 0.0:
         options["min_p"] = float(min_p)
-    if presence_penalty is not None:
+    if presence_penalty is not None and presence_penalty != 0.0:
         options["presence_penalty"] = float(presence_penalty)
-    if repetition_penalty is not None:
+    if repetition_penalty is not None and repetition_penalty != 1.0:
         options["repeat_penalty"] = float(repetition_penalty)
     
     try:

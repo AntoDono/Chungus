@@ -311,7 +311,10 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
             )
             
             for chunk in stream:
-                delta_content = chunk.get("message", {}).get("content", "")
+                if hasattr(chunk, 'message'):
+                    delta_content = chunk.message.content or ""
+                else:
+                    delta_content = chunk.get("message", {}).get("content", "")
                 
                 if delta_content:
                     accumulated_text += delta_content
@@ -331,7 +334,7 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                     yield f"data: {json.dumps(chunk_response)}\n\n"
                 
                 # Check if done
-                if chunk.get("done", False):
+                if (hasattr(chunk, 'done') and chunk.done) or (not hasattr(chunk, 'done') and chunk.get("done", False)):
                     output_tokens = count_tokens_approximate(accumulated_text)
                     llm_request.mark_completed(
                         response_text=accumulated_text,

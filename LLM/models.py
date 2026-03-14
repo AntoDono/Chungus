@@ -63,6 +63,7 @@ class Model(models.Model):
         help_text="Path or identifier for the model (e.g., 'meta-llama/Llama-2-7b-chat-hf')"
     )
     is_active = models.BooleanField(default=True, help_text="Whether this model is available")
+    alwayswarm = models.BooleanField(default=False, help_text="Keep this model warm by sending periodic requests")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -76,6 +77,18 @@ class Model(models.Model):
         choices=PROVIDER_CHOICES,
         default='vllm',
         help_text="Provider to use for this model"
+    )
+    
+    # Model type selection
+    MODEL_TYPE_CHOICES = [
+        ('chat', 'Chat'),
+        ('embedding', 'Embedding'),
+    ]
+    model_type = models.CharField(
+        max_length=10,
+        choices=MODEL_TYPE_CHOICES,
+        default='chat',
+        help_text="Type of model: chat for text generation, embedding for embeddings"
     )
     
     # Ollama configuration

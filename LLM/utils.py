@@ -285,17 +285,11 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
             options=options
         )
         
-        print(f"[Ollama DEBUG] response type: {type(response)}")
-        print(f"[Ollama DEBUG] response repr: {repr(response)[:500]}")
-        print(f"[Ollama DEBUG] options sent: {options}")
-
         # Support both dict responses (old ollama lib) and Pydantic object responses (new ollama lib)
         if hasattr(response, 'message'):
             generated_text = response.message.content or ""
         else:
-            generated_text = response.get("message", {}).get("content", "")
-
-        print(f"[Ollama DEBUG] extracted content: {repr(generated_text)[:200]}")
+            generated_text = response.get("message", {}).get("content", "") or ""
 
         if not generated_text:
             raise ValueError("No content in Ollama response")

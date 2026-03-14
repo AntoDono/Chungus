@@ -93,13 +93,17 @@ class Command(BaseCommand):
                     )
                 else:
                     # Warmup for chat models
+                    # Thinking/reasoning models need enough tokens to finish their reasoning
+                    # chain before producing a response. Use a generous limit for warmup.
+                    warmup_max_tokens = 1024
+
                     llm_request = LLMRequest.objects.create(
                         api_key=api_key,
                         model=model,
                         prompt=warmup_prompt,
                         system_prompt="",
                         temperature=model.default_temperature,
-                        max_tokens=10,  # Very short response
+                        max_tokens=warmup_max_tokens,
                         stream=False,
                         request_metadata={'warmup': True}
                     )
@@ -112,7 +116,7 @@ class Command(BaseCommand):
                         engine = get_or_create_engine(model)
                         sampling_params = SamplingParams(
                             temperature=model.default_temperature,
-                            max_tokens=10,
+                            max_tokens=warmup_max_tokens,
                             top_p=1.0,
                             top_k=-1,
                         )
@@ -123,7 +127,7 @@ class Command(BaseCommand):
                     elif model.provider == 'ollama':
                         formatted_messages = format_messages_for_ollama(messages, "")
                         generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
-                            model, warmup_prompt, model.default_temperature, 10,
+                            model, warmup_prompt, model.default_temperature, warmup_max_tokens,
                             None, None, None, None, None, formatted_messages, ""
                         )
                     else:

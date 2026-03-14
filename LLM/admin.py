@@ -72,7 +72,7 @@ class LLMRequestAdmin(admin.ModelAdmin):
             'fields': ('prompt', 'system_prompt', 'images')
         }),
         ('Parameters', {
-            'fields': ('temperature', 'max_tokens', 'top_p', 'top_k', 'stream')
+            'fields': ('temperature', 'max_tokens', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'repetition_penalty', 'stream')
         }),
         ('Response', {
             'fields': ('response', 'error_message', 'response_metadata')

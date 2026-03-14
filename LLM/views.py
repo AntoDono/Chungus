@@ -285,20 +285,20 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
             
             # Build options dict
             options = {
-                "temperature": temperature,
-                "num_predict": max_tokens,
+                "temperature": float(temperature),
+                "num_predict": int(max_tokens),
             }
             
             if top_p is not None:
-                options["top_p"] = top_p
-            if top_k is not None:
-                options["top_k"] = top_k
+                options["top_p"] = float(top_p)
+            if top_k is not None and top_k != -1:
+                options["top_k"] = int(top_k)
             if min_p is not None:
-                options["min_p"] = min_p
+                options["min_p"] = float(min_p)
             if presence_penalty is not None:
-                options["presence_penalty"] = presence_penalty
+                options["presence_penalty"] = float(presence_penalty)
             if repetition_penalty is not None:
-                options["repeat_penalty"] = repetition_penalty
+                options["repeat_penalty"] = float(repetition_penalty)
             
             accumulated_text = ""
             

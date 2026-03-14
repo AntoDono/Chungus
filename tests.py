@@ -607,7 +607,7 @@ class TestRunner:
 def main():
     """Main entry point"""
     # Check if server is reachable
-    base_url = os.environ.get('LLM_BASE_URL', 'http://localhost:8000')
+    base_url = os.environ.get('LLM_BASE_URL', 'https://chungus.antodono.com')
     
     try:
         response = requests.get(f"{base_url}/admin/", timeout=5)

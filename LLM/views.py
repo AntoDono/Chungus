@@ -49,6 +49,7 @@ def chat_completions(request):
     min_p = data.get('min_p')
     presence_penalty = data.get('presence_penalty')
     repetition_penalty = data.get('repetition_penalty')
+    thinking = data.get('thinking')  # True / False / None
     
     # Validate model
     try:
@@ -97,6 +98,13 @@ def chat_completions(request):
         presence_penalty = model.default_presence_penalty
     if repetition_penalty is None:
         repetition_penalty = model.default_repetition_penalty
+    # Resolve thinking: request value wins; fall back to model-level thinking_mode
+    if thinking is None:
+        if model.thinking_mode == 'enabled':
+            thinking = True
+        elif model.thinking_mode == 'disabled':
+            thinking = False
+        # 'auto' → leave as None (don't pass think= to Ollama)
     
     # Format prompt from messages; collect images from all message content parts.
     # Content may be a plain string or an OpenAI multimodal list.
@@ -127,6 +135,7 @@ def chat_completions(request):
         min_p=min_p,
         presence_penalty=presence_penalty,
         repetition_penalty=repetition_penalty,
+        thinking=thinking,
         stream=stream,
         request_metadata={'messages': messages}
     )
@@ -162,9 +171,9 @@ def chat_completions(request):
         elif model.provider == 'ollama':
             # Images are embedded in formatted_messages and handled by format_messages_for_ollama
             if stream:
-                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens)
+                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens)
             else:
-                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens)
+                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens)
         
         else:
             raise ValueError(f"Unknown provider: {model.provider}")
@@ -231,11 +240,11 @@ def generate_chat_completion_vllm(engine, sampling_params, llm_request, input_to
         raise
 
 
-def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens):
+def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens):
     """Generate non-streaming chat completion using Ollama"""
     try:
         generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
-            model, prompt, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, messages, system_prompt
+            model, prompt, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, messages, system_prompt
         )
         
         # Mark as completed
@@ -274,7 +283,7 @@ def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, m
         raise
 
 
-def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens):
+def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens):
     """Generate streaming chat completion using Ollama Python library"""
     def generate():
         try:
@@ -301,14 +310,13 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                 options["repeat_penalty"] = float(repetition_penalty)
             
             accumulated_text = ""
-            
+
+            stream_kwargs = dict(model=model_name, messages=ollama_messages, options=options, stream=True)
+            if thinking is not None:
+                stream_kwargs['think'] = thinking
+
             # Stream response from Ollama
-            stream = client.chat(
-                model=model_name,
-                messages=ollama_messages,
-                options=options,
-                stream=True
-            )
+            stream = client.chat(**stream_kwargs)
             
             for chunk in stream:
                 if hasattr(chunk, 'message'):

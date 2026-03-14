@@ -248,7 +248,7 @@ def get_ollama_client(model: Model):
 def generate_with_ollama(model: Model, prompt: str, temperature: float, max_tokens: int,
                          top_p: Optional[float] = None, top_k: Optional[int] = None,
                          min_p: Optional[float] = None, presence_penalty: Optional[float] = None,
-                         repetition_penalty: Optional[float] = None,
+                         repetition_penalty: Optional[float] = None, thinking: Optional[bool] = None,
                          messages: Optional[list] = None, system_prompt: str = "") -> tuple[str, int, int]:
     """Generate text using Ollama Python library"""
     client = get_ollama_client(model)
@@ -279,17 +279,22 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
         options["repeat_penalty"] = float(repetition_penalty)
     
     try:
-        response = client.chat(
-            model=model_name,
-            messages=ollama_messages,
-            options=options
-        )
+        chat_kwargs = dict(model=model_name, messages=ollama_messages, options=options)
+        if thinking is not None:
+            chat_kwargs['think'] = thinking
+        response = client.chat(**chat_kwargs)
         
         # Support both dict responses (old ollama lib) and Pydantic object responses (new ollama lib)
         if hasattr(response, 'message'):
             generated_text = response.message.content or ""
+            # Thinking models (e.g. QwQ, Qwen3) put reasoning in `thinking` and the
+            # reply in `content`. If content is empty the model ran out of tokens
+            # mid-think; fall back to the thinking text so we return something useful.
+            if not generated_text:
+                generated_text = getattr(response.message, 'thinking', None) or ""
         else:
-            generated_text = response.get("message", {}).get("content", "") or ""
+            msg = response.get("message", {})
+            generated_text = msg.get("content", "") or msg.get("thinking", "") or ""
 
         if not generated_text:
             raise ValueError("No content in Ollama response")

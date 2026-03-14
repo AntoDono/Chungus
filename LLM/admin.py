@@ -37,7 +37,7 @@ class ModelAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at', 'total_requests', 'total_responses', 'total_errors', 'total_tokens_processed', 'total_input_tokens', 'total_output_tokens']
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'model_path', 'model_type', 'provider', 'is_active', 'alwayswarm')
+            'fields': ('name', 'description', 'model_path', 'model_type', 'provider', 'is_active', 'alwayswarm', 'thinking_mode')
         }),
         ('Provider Configuration', {
             'fields': ('ollama_base_url', 'huggingface_token'),
@@ -76,7 +76,7 @@ class LLMRequestAdmin(admin.ModelAdmin):
             'fields': ('prompt', 'system_prompt', 'images')
         }),
         ('Parameters', {
-            'fields': ('temperature', 'max_tokens', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'repetition_penalty', 'stream')
+            'fields': ('temperature', 'max_tokens', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'repetition_penalty', 'thinking', 'stream')
         }),
         ('Response', {
             'fields': ('response', 'error_message', 'response_metadata')

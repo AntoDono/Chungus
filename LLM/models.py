@@ -114,6 +114,26 @@ class Model(models.Model):
         validators=[MinValueValidator(1)],
         help_text="Default maximum tokens to generate"
     )
+    default_top_p = models.FloatField(
+        default=0.95,
+        help_text="Default top-p sampling parameter"
+    )
+    default_top_k = models.IntegerField(
+        default=20,
+        help_text="Default top-k sampling parameter"
+    )
+    default_min_p = models.FloatField(
+        default=0.0,
+        help_text="Default min-p sampling parameter"
+    )
+    default_presence_penalty = models.FloatField(
+        default=1.5,
+        help_text="Default presence penalty"
+    )
+    default_repetition_penalty = models.FloatField(
+        default=1.0,
+        help_text="Default repetition penalty"
+    )
     
     # HuggingFace authentication
     huggingface_token = models.CharField(

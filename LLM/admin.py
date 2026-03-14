@@ -44,7 +44,11 @@ class ModelAdmin(admin.ModelAdmin):
             'description': 'Configure provider-specific settings'
         }),
         ('Model Configuration', {
-            'fields': ('max_context_length', 'default_temperature', 'default_max_tokens')
+            'fields': (
+                'max_context_length', 'default_temperature', 'default_max_tokens',
+                'default_top_p', 'default_top_k', 'default_min_p',
+                'default_presence_penalty', 'default_repetition_penalty',
+            )
         }),
         ('Statistics', {
             'fields': (

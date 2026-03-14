@@ -87,6 +87,16 @@ def chat_completions(request):
         temperature = model.default_temperature
     if max_tokens is None:
         max_tokens = model.default_max_tokens
+    if top_p is None:
+        top_p = model.default_top_p
+    if top_k is None:
+        top_k = model.default_top_k
+    if min_p is None:
+        min_p = model.default_min_p
+    if presence_penalty is None:
+        presence_penalty = model.default_presence_penalty
+    if repetition_penalty is None:
+        repetition_penalty = model.default_repetition_penalty
     
     # Format prompt from messages; collect images from all message content parts.
     # Content may be a plain string or an OpenAI multimodal list.

@@ -197,6 +197,9 @@ class LLMRequest(models.Model):
     max_tokens = models.IntegerField(null=True, blank=True, help_text="Maximum tokens to generate")
     top_p = models.FloatField(null=True, blank=True, help_text="Top-p sampling parameter")
     top_k = models.IntegerField(null=True, blank=True, help_text="Top-k sampling parameter")
+    min_p = models.FloatField(null=True, blank=True, help_text="Min-p sampling parameter")
+    presence_penalty = models.FloatField(null=True, blank=True, help_text="Presence penalty")
+    repetition_penalty = models.FloatField(null=True, blank=True, help_text="Repetition penalty")
     stream = models.BooleanField(default=False, help_text="Whether to stream the response")
     
     # Response details

@@ -46,6 +46,9 @@ def chat_completions(request):
     max_tokens = data.get('max_tokens')
     top_p = data.get('top_p')
     top_k = data.get('top_k')
+    min_p = data.get('min_p')
+    presence_penalty = data.get('presence_penalty')
+    repetition_penalty = data.get('repetition_penalty')
     
     # Validate model
     try:
@@ -111,6 +114,9 @@ def chat_completions(request):
         max_tokens=max_tokens,
         top_p=top_p,
         top_k=top_k,
+        min_p=min_p,
+        presence_penalty=presence_penalty,
+        repetition_penalty=repetition_penalty,
         stream=stream,
         request_metadata={'messages': messages}
     )
@@ -133,6 +139,9 @@ def chat_completions(request):
                 max_tokens=max_tokens,
                 top_p=top_p if top_p is not None else 1.0,
                 top_k=top_k if top_k is not None else -1,
+                min_p=min_p if min_p is not None else 0.0,
+                presence_penalty=presence_penalty if presence_penalty is not None else 0.0,
+                repetition_penalty=repetition_penalty if repetition_penalty is not None else 1.0,
             )
 
             if stream:
@@ -143,9 +152,9 @@ def chat_completions(request):
         elif model.provider == 'ollama':
             # Images are embedded in formatted_messages and handled by format_messages_for_ollama
             if stream:
-                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, input_tokens)
+                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens)
             else:
-                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, input_tokens)
+                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens)
         
         else:
             raise ValueError(f"Unknown provider: {model.provider}")
@@ -212,11 +221,11 @@ def generate_chat_completion_vllm(engine, sampling_params, llm_request, input_to
         raise
 
 
-def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, input_tokens):
+def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens):
     """Generate non-streaming chat completion using Ollama"""
     try:
         generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
-            model, prompt, temperature, max_tokens, top_p, top_k, messages, system_prompt
+            model, prompt, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, messages, system_prompt
         )
         
         # Mark as completed
@@ -255,7 +264,7 @@ def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, m
         raise
 
 
-def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, input_tokens):
+def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, input_tokens):
     """Generate streaming chat completion using Ollama Python library"""
     def generate():
         try:
@@ -274,6 +283,12 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                 options["top_p"] = top_p
             if top_k is not None:
                 options["top_k"] = top_k
+            if min_p is not None:
+                options["min_p"] = min_p
+            if presence_penalty is not None:
+                options["presence_penalty"] = presence_penalty
+            if repetition_penalty is not None:
+                options["repeat_penalty"] = repetition_penalty
             
             accumulated_text = ""
             

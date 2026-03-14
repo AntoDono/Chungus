@@ -229,13 +229,14 @@ class TestRunner:
         return True
     
     def test_custom_parameters(self) -> bool:
-        """Test custom temperature and top_p"""
+        """Test custom temperature, top_p, and top_k"""
         payload = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": "Say something."}],
             "stream": False,
             "temperature": 0.9,
             "top_p": 0.95,
+            "top_k": 40,
             "max_tokens": 30
         }
         response = requests.post(
@@ -253,6 +254,197 @@ class TestRunner:
             except:
                 error_msg = response.text[:200]
             raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        return True
+
+    def test_min_p(self) -> bool:
+        """Test min_p sampling parameter"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": "Say something brief."}],
+            "stream": False,
+            "min_p": 0.05,
+            "max_tokens": 20
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+            except:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        data = response.json()
+        assert 'choices' in data and len(data['choices']) > 0
+        return True
+
+    def test_presence_penalty(self) -> bool:
+        """Test presence_penalty parameter"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": "List three fruits."}],
+            "stream": False,
+            "presence_penalty": 1.5,
+            "max_tokens": 40
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+            except:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        data = response.json()
+        assert 'choices' in data and len(data['choices']) > 0
+        return True
+
+    def test_repetition_penalty(self) -> bool:
+        """Test repetition_penalty parameter"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": "Say hello."}],
+            "stream": False,
+            "repetition_penalty": 1.1,
+            "max_tokens": 20
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+            except:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        data = response.json()
+        assert 'choices' in data and len(data['choices']) > 0
+        return True
+
+    def test_all_sampling_params(self) -> bool:
+        """Test all sampling parameters together"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": "Write one sentence about space."}],
+            "stream": False,
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 1.5,
+            "repetition_penalty": 1.0,
+            "max_tokens": 50
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+            except:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        data = response.json()
+        assert 'choices' in data and len(data['choices']) > 0
+        content = data['choices'][0]['message']['content']
+        print(f"(response: {content[:30]}...)", end=" ")
+        return True
+
+    def test_all_sampling_params_streaming(self) -> bool:
+        """Test all sampling parameters together with streaming"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": "Write one sentence about the ocean."}],
+            "stream": True,
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 1.5,
+            "repetition_penalty": 1.0,
+            "max_tokens": 50
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            stream=True,
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+            except:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        chunks = []
+        for line in response.iter_lines():
+            if line:
+                line_str = line.decode('utf-8')
+                if line_str.startswith('data: '):
+                    data_str = line_str[6:]
+                    if data_str == '[DONE]':
+                        break
+                    try:
+                        chunks.append(json.loads(data_str))
+                    except json.JSONDecodeError:
+                        pass
+        assert len(chunks) > 0, "No chunks received"
+        print(f"({len(chunks)} chunks)", end=" ")
+        return True
+
+    def test_empty_messages_error(self) -> bool:
+        """Test error handling for empty messages array"""
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json={"model": self.model_name, "messages": []},
+            timeout=10
+        )
+        assert response.status_code == 400, f"Expected 400, got {response.status_code}"
+        data = response.json()
+        assert 'error' in data and data['error']['code'] == 'invalid_messages'
+        return True
+
+    def test_invalid_json_error(self) -> bool:
+        """Test error handling for malformed JSON body"""
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            data="this is not json",
+            timeout=10
+        )
+        assert response.status_code == 400, f"Expected 400, got {response.status_code}"
+        data = response.json()
+        assert 'error' in data and data['error']['code'] == 'invalid_json'
         return True
     
     def test_missing_api_key(self) -> bool:
@@ -369,10 +561,17 @@ class TestRunner:
             ("Chat Completion (Streaming)", self.test_chat_completion_streaming),
             ("System Prompt", self.test_system_prompt),
             ("Multi-Turn Conversation", self.test_multi_turn),
-            ("Custom Parameters", self.test_custom_parameters),
+            ("Custom Parameters (temperature, top_p, top_k)", self.test_custom_parameters),
+            ("Sampling Param: min_p", self.test_min_p),
+            ("Sampling Param: presence_penalty", self.test_presence_penalty),
+            ("Sampling Param: repetition_penalty", self.test_repetition_penalty),
+            ("All Sampling Params (Non-Streaming)", self.test_all_sampling_params),
+            ("All Sampling Params (Streaming)", self.test_all_sampling_params_streaming),
             ("Image Input (Multimodal)", self.test_image_input),
             ("Missing API Key Error", self.test_missing_api_key),
             ("Invalid Model Error", self.test_invalid_model),
+            ("Empty Messages Error", self.test_empty_messages_error),
+            ("Invalid JSON Error", self.test_invalid_json_error),
             ("Rate Limiting", self.test_rate_limiting),
         ]
         

@@ -245,8 +245,10 @@ def get_ollama_client(model: Model):
     return ollama.Client(host=model.ollama_base_url or 'localhost:11434')
 
 
-def generate_with_ollama(model: Model, prompt: str, temperature: float, max_tokens: int, 
+def generate_with_ollama(model: Model, prompt: str, temperature: float, max_tokens: int,
                          top_p: Optional[float] = None, top_k: Optional[int] = None,
+                         min_p: Optional[float] = None, presence_penalty: Optional[float] = None,
+                         repetition_penalty: Optional[float] = None,
                          messages: Optional[list] = None, system_prompt: str = "") -> tuple[str, int, int]:
     """Generate text using Ollama Python library"""
     client = get_ollama_client(model)
@@ -269,6 +271,12 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
         options["top_p"] = top_p
     if top_k is not None:
         options["top_k"] = top_k
+    if min_p is not None:
+        options["min_p"] = min_p
+    if presence_penalty is not None:
+        options["presence_penalty"] = presence_penalty
+    if repetition_penalty is not None:
+        options["repeat_penalty"] = repetition_penalty
     
     try:
         response = client.chat(

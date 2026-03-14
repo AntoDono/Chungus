@@ -19,6 +19,7 @@ class Colors:
     END = '\033[0m'
     BOLD = '\033[1m'
 
+TEST_MAX_TOKENS = 10000
 
 class TestRunner:
     def __init__(self, base_url: str = "http://localhost:8000"):
@@ -94,7 +95,7 @@ class TestRunner:
             "model": self.model_name,
             "messages": [{"role": "user", "content": "Say hello in one word."}],
             "stream": False,
-            "max_tokens": 10
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -126,7 +127,7 @@ class TestRunner:
             "model": self.model_name,
             "messages": [{"role": "user", "content": "Count from 1 to 3."}],
             "stream": True,
-            "max_tokens": 50
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -175,7 +176,7 @@ class TestRunner:
                 {"role": "user", "content": "What is 2+2?"}
             ],
             "stream": False,
-            "max_tokens": 50
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -206,7 +207,7 @@ class TestRunner:
                 {"role": "user", "content": "What is my name?"}
             ],
             "stream": False,
-            "max_tokens": 50
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -237,7 +238,7 @@ class TestRunner:
             "temperature": 0.9,
             "top_p": 0.95,
             "top_k": 40,
-            "max_tokens": 30
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -263,7 +264,7 @@ class TestRunner:
             "messages": [{"role": "user", "content": "Say something brief."}],
             "stream": False,
             "min_p": 0.05,
-            "max_tokens": 20
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -291,7 +292,7 @@ class TestRunner:
             "messages": [{"role": "user", "content": "List three fruits."}],
             "stream": False,
             "presence_penalty": 1.5,
-            "max_tokens": 40
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -319,7 +320,7 @@ class TestRunner:
             "messages": [{"role": "user", "content": "Say hello."}],
             "stream": False,
             "repetition_penalty": 1.1,
-            "max_tokens": 20
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -352,7 +353,7 @@ class TestRunner:
             "min_p": 0.0,
             "presence_penalty": 1.5,
             "repetition_penalty": 1.0,
-            "max_tokens": 50
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -387,7 +388,7 @@ class TestRunner:
             "min_p": 0.0,
             "presence_penalty": 1.5,
             "repetition_penalty": 1.0,
-            "max_tokens": 50
+            "max_tokens": TEST_MAX_TOKENS
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -476,13 +477,28 @@ class TestRunner:
         assert 'error' in data
         return True
     
+    @staticmethod
+    def _make_png_data_uri(width: int = 64, height: int = 64, color: tuple = (255, 0, 0)) -> str:
+        """Generate a solid-colour PNG as a base64 data URI using only stdlib."""
+        import zlib, struct, base64
+
+        def chunk(tag: bytes, data: bytes) -> bytes:
+            c = tag + data
+            return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xFFFFFFFF)
+
+        signature = b'\x89PNG\r\n\x1a\n'
+        ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+        row = b'\x00' + bytes(color) * width
+        idat = chunk(b'IDAT', zlib.compress(row * height, 9))
+        iend = chunk(b'IEND', b'')
+        png_bytes = signature + ihdr + idat + iend
+        return "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+
     def test_image_input(self) -> bool:
         """Test chat completion with an image in multimodal content format"""
-        # 1×1 red pixel PNG encoded as a data URI — works with any vision model
-        tiny_red_pixel = (
-            "data:image/png;base64,"
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
-        )
+        # Build a 64×64 solid red PNG at runtime using only stdlib.
+        # Must be >32px per side — many vision models reject smaller inputs.
+        tiny_red_pixel = self._make_png_data_uri(width=64, height=64, color=(255, 0, 0))
         payload = {
             "model": self.model_name,
             "messages": [
@@ -495,7 +511,7 @@ class TestRunner:
                 }
             ],
             "stream": False,
-            "max_tokens": 20,
+            "max_tokens": TEST_MAX_TOKENS,
         }
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
@@ -531,7 +547,7 @@ class TestRunner:
                 "model": self.model_name,
                 "messages": [{"role": "user", "content": f"Request {i}"}],
                 "stream": False,
-                "max_tokens": 5
+                "max_tokens": TEST_MAX_TOKENS
             }
             try:
                 response = requests.post(

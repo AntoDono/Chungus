@@ -3,18 +3,84 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.db.models import Count
 from .models import APIKey, Model, LLMRequest
-from typing import Optional, Dict, Union, Any
+from typing import Optional, Dict, List, Union, Any
 import threading
 import os
+import io
 import json
+import base64 as _base64
+import urllib.request as _urllib_request
 
 from vllm import LLM, SamplingParams
 import ollama
+
+try:
+    from PIL import Image as _PILImage
+    _PIL_AVAILABLE = True
+except ImportError:
+    _PIL_AVAILABLE = False
 
 
 # Global engine cache - one engine per model
 _vllm_engines: Dict[str, Any] = {}
 _engines_lock = threading.Lock()
+
+
+# ---------------------------------------------------------------------------
+# Image helpers (OpenAI multimodal content format)
+# ---------------------------------------------------------------------------
+
+def extract_images_from_content(content) -> tuple[str, List[str]]:
+    """
+    Parse an OpenAI message content value, which may be a plain string or a
+    list of content parts (text / image_url).
+
+    Returns (text_str, list_of_image_srcs) where each image src is either a
+    data URI ("data:image/...;base64,...") or an https URL.
+    """
+    if isinstance(content, str):
+        return content, []
+    if not isinstance(content, list):
+        return str(content), []
+
+    text_parts: List[str] = []
+    images: List[str] = []
+    for part in content:
+        part_type = part.get("type", "")
+        if part_type == "text":
+            text_parts.append(part.get("text", ""))
+        elif part_type == "image_url":
+            url = part.get("image_url", {}).get("url", "")
+            if url:
+                images.append(url)
+
+    return " ".join(text_parts), images
+
+
+def _load_image_bytes(src: str) -> bytes:
+    """Fetch raw image bytes from a data URI or a URL."""
+    if src.startswith("data:"):
+        _, data = src.split(",", 1)
+        return _base64.b64decode(data)
+    with _urllib_request.urlopen(src, timeout=15) as resp:
+        return resp.read()
+
+
+def load_pil_image(src: str):
+    """Load a PIL.Image from a data URI or URL. Requires Pillow."""
+    if not _PIL_AVAILABLE:
+        raise RuntimeError(
+            "Pillow is required for image inputs with vLLM. "
+            "Install it with: pip install Pillow"
+        )
+    return _PILImage.open(io.BytesIO(_load_image_bytes(src))).convert("RGB")
+
+
+def image_src_to_base64(src: str) -> str:
+    """Return a raw base64 string (no data URI prefix) for Ollama."""
+    if src.startswith("data:"):
+        return src.split(",", 1)[1]
+    return _base64.b64encode(_load_image_bytes(src)).decode()
 
 
 def get_or_create_vllm_engine(model: Model):
@@ -71,37 +137,58 @@ def get_or_create_engine(model: Model) -> Union[Any, str]:
         raise ValueError(f"Unknown provider: {model.provider}")
 
 
-def generate_with_vllm(engine, prompt: str, sampling_params) -> tuple[str, int, int]:
-    """Generate text using vLLM engine"""
-    outputs = engine.generate([prompt], sampling_params)
-    
+def generate_with_vllm(engine, prompt: str, sampling_params,
+                       images: Optional[List[str]] = None) -> tuple[str, int, int]:
+    """
+    Generate text using vLLM engine.
+
+    ``images`` is an optional list of image srcs (data URIs or URLs).  When
+    provided the prompt and images are forwarded as multimodal input via
+    vLLM's ``multi_modal_data`` mechanism.  The calling model must support
+    vision inputs (e.g. LLaVA, InternVL, Qwen-VL …).
+    """
+    if images:
+        pil_images = [load_pil_image(src) for src in images]
+        multi_modal_data = {"image": pil_images[0] if len(pil_images) == 1 else pil_images}
+        vllm_input = {"prompt": prompt, "multi_modal_data": multi_modal_data}
+        outputs = engine.generate([vllm_input], sampling_params)
+    else:
+        outputs = engine.generate([prompt], sampling_params)
+
     if not outputs or not outputs[0].outputs:
         raise ValueError("No output generated")
-    
+
     generated_text = outputs[0].outputs[0].text
-    # Approximate token counts
     input_tokens = count_tokens_approximate(prompt)
     output_tokens = count_tokens_approximate(generated_text)
-    
+
     return generated_text, input_tokens, output_tokens
 
 
 def format_messages_for_ollama(messages: list, system_prompt: str = "") -> list:
-    """Format OpenAI-style messages for Ollama API"""
+    """
+    Format OpenAI-style messages for the Ollama API.
+
+    Message content may be a plain string or a list of content parts
+    (text / image_url).  Images are extracted per-message and placed in
+    Ollama's ``images`` field as raw base64 strings.
+    """
     ollama_messages = []
-    
-    # Add system message if present
+
     if system_prompt:
         ollama_messages.append({"role": "system", "content": system_prompt})
-    
-    # Convert OpenAI messages to Ollama format
+
     for msg in messages:
         role = msg.get("role", "")
-        content = msg.get("content", "")
-        
-        if role in ["system", "user", "assistant"]:
-            ollama_messages.append({"role": role, "content": content})
-    
+        if role not in ["system", "user", "assistant"]:
+            continue
+
+        text, image_srcs = extract_images_from_content(msg.get("content", ""))
+        ollama_msg: Dict[str, Any] = {"role": role, "content": text}
+        if image_srcs:
+            ollama_msg["images"] = [image_src_to_base64(src) for src in image_srcs]
+        ollama_messages.append(ollama_msg)
+
     return ollama_messages
 
 
@@ -197,23 +284,25 @@ def check_rate_limit(api_key: APIKey) -> tuple[bool, Optional[str]]:
 def format_messages_for_prompt(messages: list, system_prompt: str = "") -> str:
     """
     Format OpenAI-style messages into a single prompt string.
-    Handles system, user, and assistant messages.
+    Handles system, user, and assistant messages. Message content may be a
+    plain string or a list of content parts (text / image_url); only text
+    parts are included in the prompt string.
     """
     parts = []
-    
+
     if system_prompt:
         parts.append(f"System: {system_prompt}")
-    
+
     for msg in messages:
         role = msg.get("role", "")
-        content = msg.get("content", "")
-        
+        text, _ = extract_images_from_content(msg.get("content", ""))
+
         if role == "system":
-            parts.append(f"System: {content}")
+            parts.append(f"System: {text}")
         elif role == "user":
-            parts.append(f"User: {content}")
+            parts.append(f"User: {text}")
         elif role == "assistant":
-            parts.append(f"Assistant: {content}")
-    
+            parts.append(f"Assistant: {text}")
+
     return "\n\n".join(parts)
 

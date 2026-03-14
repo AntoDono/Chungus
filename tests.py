@@ -284,6 +284,50 @@ class TestRunner:
         assert 'error' in data
         return True
     
+    def test_image_input(self) -> bool:
+        """Test chat completion with an image in multimodal content format"""
+        # 1×1 red pixel PNG encoded as a data URI — works with any vision model
+        tiny_red_pixel = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+        )
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What color is this image? Reply in one word."},
+                        {"type": "image_url", "image_url": {"url": tiny_red_pixel}},
+                    ],
+                }
+            ],
+            "stream": False,
+            "max_tokens": 20,
+        }
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers=self.headers,
+            json=payload,
+            timeout=60,
+        )
+        if response.status_code != 200:
+            error_msg = "Unknown error"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = error_data['error'].get('message', str(error_data))
+                else:
+                    error_msg = str(error_data)
+            except Exception:
+                error_msg = response.text[:200]
+            raise AssertionError(f"Expected 200, got {response.status_code}: {error_msg}")
+        data = response.json()
+        assert 'choices' in data and len(data['choices']) > 0
+        content = data['choices'][0]['message']['content']
+        print(f"(response: {content[:40]}...)", end=" ")
+        return True
+
     def test_rate_limiting(self) -> bool:
         """Test rate limiting by sending rapid requests"""
         print(f"\n  {Colors.YELLOW}Sending 5 rapid requests...{Colors.END}")
@@ -326,6 +370,7 @@ class TestRunner:
             ("System Prompt", self.test_system_prompt),
             ("Multi-Turn Conversation", self.test_multi_turn),
             ("Custom Parameters", self.test_custom_parameters),
+            ("Image Input (Multimodal)", self.test_image_input),
             ("Missing API Key Error", self.test_missing_api_key),
             ("Invalid Model Error", self.test_invalid_model),
             ("Rate Limiting", self.test_rate_limiting),

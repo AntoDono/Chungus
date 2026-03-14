@@ -5,13 +5,14 @@ from django.utils import timezone
 from .models import Model, LLMRequest
 from .auth import require_api_key
 from .utils import (
-    get_or_create_engine, 
+    get_or_create_engine,
     format_messages_for_prompt,
     generate_with_vllm,
     generate_with_ollama,
     count_tokens_approximate,
     format_messages_for_ollama,
-    get_ollama_client
+    get_ollama_client,
+    extract_images_from_content,
 )
 
 from vllm import SamplingParams
@@ -72,23 +73,28 @@ def chat_completions(request):
     if max_tokens is None:
         max_tokens = model.default_max_tokens
     
-    # Format prompt from messages
+    # Format prompt from messages; collect images from all message content parts.
+    # Content may be a plain string or an OpenAI multimodal list.
     system_prompt = ""
     formatted_messages = []
+    all_images = []
     for msg in messages:
+        text, img_srcs = extract_images_from_content(msg.get('content', ''))
+        all_images.extend(img_srcs)
         if msg.get('role') == 'system':
-            system_prompt = msg.get('content', '')
+            system_prompt = text
         else:
             formatted_messages.append(msg)
-    
+
     prompt = format_messages_for_prompt(formatted_messages, system_prompt)
-    
+
     # Create LLMRequest record
     llm_request = LLMRequest.objects.create(
         api_key=request.api_key,
         model=model,
         prompt=prompt,
         system_prompt=system_prompt,
+        images=all_images,
         temperature=temperature,
         max_tokens=max_tokens,
         top_p=top_p,
@@ -108,7 +114,7 @@ def chat_completions(request):
         if model.provider == 'vllm':
             # Get vLLM engine
             engine = get_or_create_engine(model)
-            
+
             # Create sampling parameters
             sampling_params = SamplingParams(
                 temperature=temperature,
@@ -116,20 +122,17 @@ def chat_completions(request):
                 top_p=top_p if top_p is not None else 1.0,
                 top_k=top_k if top_k is not None else -1,
             )
-            
+
             if stream:
-                # Streaming response
-                return stream_chat_completion(engine, sampling_params, llm_request, input_tokens, model)
+                return stream_chat_completion(engine, sampling_params, llm_request, input_tokens, model, all_images)
             else:
-                # Non-streaming response
-                return generate_chat_completion_vllm(engine, sampling_params, llm_request, input_tokens)
-        
+                return generate_chat_completion_vllm(engine, sampling_params, llm_request, input_tokens, all_images)
+
         elif model.provider == 'ollama':
+            # Images are embedded in formatted_messages and handled by format_messages_for_ollama
             if stream:
-                # Streaming response for Ollama
                 return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, input_tokens)
             else:
-                # Non-streaming response for Ollama
                 return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, input_tokens)
         
         else:
@@ -154,12 +157,11 @@ def chat_completions(request):
         }, status=500)
 
 
-def generate_chat_completion_vllm(engine, sampling_params, llm_request, input_tokens):
+def generate_chat_completion_vllm(engine, sampling_params, llm_request, input_tokens, images=None):
     """Generate non-streaming chat completion using vLLM"""
     try:
-        # Generate response using vLLM
         generated_text, input_tokens_actual, output_tokens = generate_with_vllm(
-            engine, llm_request.prompt, sampling_params
+            engine, llm_request.prompt, sampling_params, images=images or []
         )
         
         # Mark as completed
@@ -342,16 +344,22 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
     return response
 
 
-def stream_chat_completion(engine, sampling_params, llm_request, input_tokens, model):
+def stream_chat_completion(engine, sampling_params, llm_request, input_tokens, model, images=None):
     """Generate streaming chat completion using vLLM"""
+    _images = images or []
+
     def generate():
         try:
             accumulated_text = ""
-            
-            # Generate with streaming - vLLM supports streaming via generate_stream
-            # For now, we'll simulate streaming by generating and chunking
-            # In production, you'd use AsyncLLMEngine for true streaming
-            outputs = engine.generate([llm_request.prompt], sampling_params)
+
+            if _images:
+                from .utils import load_pil_image
+                pil_images = [load_pil_image(src) for src in _images]
+                multi_modal_data = {"image": pil_images[0] if len(pil_images) == 1 else pil_images}
+                vllm_input = {"prompt": llm_request.prompt, "multi_modal_data": multi_modal_data}
+                outputs = engine.generate([vllm_input], sampling_params)
+            else:
+                outputs = engine.generate([llm_request.prompt], sampling_params)
             
             if outputs and outputs[0].outputs:
                 generated_text = outputs[0].outputs[0].text

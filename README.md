@@ -246,7 +246,7 @@ for line in response.iter_lines():
 
 #### Thinking Mode (Ollama)
 
-For thinking-capable Ollama models (e.g. QwQ, Qwen3, DeepSeek R1, GPT-OSS), set `thinking` on the request to control reasoning depth. Omit it or use `"default"` to let the model decide.
+For thinking-capable Ollama models (e.g. QwQ, Qwen3, DeepSeek R1, GPT-OSS), set `thinking` on the request to control reasoning depth. Omit `thinking` or use `"default"` to let the model decide.
 
 ```python
 data = {
@@ -256,7 +256,7 @@ data = {
 }
 ```
 
-You can also use the OpenAI-compatible `reasoning_effort` field (`none`, `low`, `medium`, `high`) when `thinking` is not set.
+The thinking trace is returned in `message.thinking` / `delta.thinking`; the final answer is in `content`.
 
 #### Embeddings Request
 
@@ -418,7 +418,7 @@ Chungus/
 
 ### Chat Completions
 - `POST /api/v1/chat/completions` - Generate chat completions (streaming and non-streaming)
-  - Optional `thinking` / `reasoning_effort` parameters for Ollama thinking models
+  - Optional `thinking` parameter for Ollama thinking models
 
 ### Embeddings
 - `POST /api/v1/embeddings` - Generate embeddings for text inputs (supports single string or array of strings)

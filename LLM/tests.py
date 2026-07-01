@@ -35,23 +35,19 @@ class ThinkingModeTests(SimpleTestCase):
             normalize_thinking_input('turbo')
 
     def test_resolve_request_thinking_levels(self):
-        self.assertEqual(resolve_think_value('low', None, 'default'), 'low')
-        self.assertEqual(resolve_think_value('high', None, 'default'), 'high')
-        self.assertIsNone(resolve_think_value('default', None, 'default'))
-
-    def test_resolve_reasoning_effort_alias(self):
-        self.assertEqual(resolve_think_value(None, 'medium', 'default'), 'medium')
-        self.assertEqual(resolve_think_value(None, 'none', 'default'), False)
+        self.assertEqual(resolve_think_value('low', 'default'), 'low')
+        self.assertEqual(resolve_think_value('high', 'default'), 'high')
+        self.assertIsNone(resolve_think_value('default', 'default'))
 
     def test_resolve_model_default(self):
-        self.assertIsNone(resolve_think_value(None, None, 'default'))
-        self.assertIsNone(resolve_think_value(None, None, 'auto'))
-        self.assertTrue(resolve_think_value(None, None, 'enabled'))
-        self.assertFalse(resolve_think_value(None, None, 'disabled'))
-        self.assertEqual(resolve_think_value(None, None, 'low'), 'low')
+        self.assertIsNone(resolve_think_value(None, 'default'))
+        self.assertIsNone(resolve_think_value(None, 'auto'))
+        self.assertTrue(resolve_think_value(None, 'enabled'))
+        self.assertFalse(resolve_think_value(None, 'disabled'))
+        self.assertEqual(resolve_think_value(None, 'low'), 'low')
 
     def test_request_overrides_model_default(self):
-        self.assertEqual(resolve_think_value('high', None, 'low'), 'high')
+        self.assertEqual(resolve_think_value('high', 'low'), 'high')
 
     def test_think_value_for_storage(self):
         self.assertIsNone(think_value_for_storage(None))

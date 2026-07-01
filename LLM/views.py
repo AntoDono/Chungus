@@ -57,7 +57,6 @@ def chat_completions(request):
     presence_penalty = data.get('presence_penalty')
     repetition_penalty = data.get('repetition_penalty')
     thinking = data.get('thinking')  # default / low / medium / high / true / false
-    reasoning_effort = data.get('reasoning_effort')  # OpenAI-compatible alias
     
     try:
         model, routed_from = resolve_requested_model(model_name, 'chat')
@@ -105,7 +104,7 @@ def chat_completions(request):
         repetition_penalty = model.default_repetition_penalty
 
     try:
-        think_value = resolve_think_value(thinking, reasoning_effort, model.thinking_mode)
+        think_value = resolve_think_value(thinking, model.thinking_mode)
     except ValueError as exc:
         return JsonResponse({
             'error': {
@@ -263,7 +262,7 @@ def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, m
         
         completion_metadata = {'finish_reason': 'stop'}
         if reasoning_text:
-            completion_metadata['reasoning_content'] = reasoning_text
+            completion_metadata['thinking'] = reasoning_text
 
         # Mark as completed
         llm_request.mark_completed(
@@ -278,7 +277,7 @@ def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, m
             'content': generated_text,
         }
         if reasoning_text:
-            message['reasoning_content'] = reasoning_text
+            message['thinking'] = reasoning_text
 
         # Format OpenAI-compatible response
         response_data = {
@@ -356,7 +355,7 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                         'choices': [{
                             'index': 0,
                             'delta': {
-                                'reasoning_content': delta_reasoning
+                                'thinking': delta_reasoning
                             },
                             'finish_reason': None
                         }]
@@ -388,7 +387,7 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                     )
                     completion_metadata = {'finish_reason': 'stop'}
                     if accumulated_reasoning:
-                        completion_metadata['reasoning_content'] = accumulated_reasoning
+                        completion_metadata['thinking'] = accumulated_reasoning
                     llm_request.mark_completed(
                         response_text=accumulated_text or accumulated_reasoning,
                         input_tokens=input_tokens,

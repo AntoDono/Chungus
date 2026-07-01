@@ -58,17 +58,14 @@ def normalize_thinking_input(value: Any) -> Optional[str]:
 
 def resolve_think_value(
     request_thinking: Any,
-    reasoning_effort: Any,
     model_thinking_mode: str,
 ) -> Optional[ThinkValue]:
     """
     Resolve the value to pass to Ollama's think parameter.
     None means omit think (model/provider default).
     """
-    raw = request_thinking if request_thinking is not None else reasoning_effort
-
-    if raw is not None:
-        normalized = normalize_thinking_input(raw)
+    if request_thinking is not None:
+        normalized = normalize_thinking_input(request_thinking)
         if normalized is None:
             return None
         if normalized == 'true':

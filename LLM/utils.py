@@ -104,6 +104,21 @@ def apply_think_to_chat_kwargs(chat_kwargs: dict, think_value: Optional[ThinkVal
         chat_kwargs['think'] = think_value
 
 
+def extract_ollama_message_parts(message: Any) -> tuple[str, str]:
+    """Return (content, thinking) from an Ollama message object or dict."""
+    if message is None:
+        return "", ""
+    if hasattr(message, 'content'):
+        content = message.content or ""
+        thinking = getattr(message, 'thinking', None) or ""
+    elif isinstance(message, dict):
+        content = message.get("content", "") or ""
+        thinking = message.get("thinking", "") or ""
+    else:
+        content, thinking = "", ""
+    return content, thinking
+
+
 class ModelTypeMismatchError(Exception):
     def __init__(self, model_name: str, expected: str, actual: str):
         self.model_name = model_name
@@ -388,8 +403,8 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
                          top_p: Optional[float] = None, top_k: Optional[int] = None,
                          min_p: Optional[float] = None, presence_penalty: Optional[float] = None,
                          repetition_penalty: Optional[float] = None, thinking: Optional[ThinkValue] = None,
-                         messages: Optional[list] = None, system_prompt: str = "") -> tuple[str, int, int]:
-    """Generate text using Ollama Python library"""
+                         messages: Optional[list] = None, system_prompt: str = "") -> tuple[str, str, int, int]:
+    """Generate text using Ollama. Returns (content, reasoning, input_tokens, output_tokens)."""
     client = get_ollama_client(model)
     model_name = model.model_path
     
@@ -422,26 +437,18 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
         apply_think_to_chat_kwargs(chat_kwargs, thinking)
         response = client.chat(**chat_kwargs)
         
-        # Support both dict responses (old ollama lib) and Pydantic object responses (new ollama lib)
         if hasattr(response, 'message'):
-            generated_text = response.message.content or ""
-            # Thinking models (e.g. QwQ, Qwen3) put reasoning in `thinking` and the
-            # reply in `content`. If content is empty the model ran out of tokens
-            # mid-think; fall back to the thinking text so we return something useful.
-            if not generated_text:
-                generated_text = getattr(response.message, 'thinking', None) or ""
+            content, reasoning = extract_ollama_message_parts(response.message)
         else:
-            msg = response.get("message", {})
-            generated_text = msg.get("content", "") or msg.get("thinking", "") or ""
+            content, reasoning = extract_ollama_message_parts(response.get("message", {}))
 
-        if not generated_text:
+        if not content and not reasoning:
             raise ValueError("No content in Ollama response")
         
-        # Approximate token counts
         input_tokens = count_tokens_approximate(prompt)
-        output_tokens = count_tokens_approximate(generated_text)
+        output_tokens = count_tokens_approximate(content) + count_tokens_approximate(reasoning)
         
-        return generated_text, input_tokens, output_tokens
+        return content, reasoning, input_tokens, output_tokens
     
     except Exception as e:
         error_str = str(e).lower()
@@ -458,15 +465,16 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
                 apply_think_to_chat_kwargs(retry_kwargs, thinking)
                 response = client.chat(**retry_kwargs)
                 
-                generated_text = response.get("message", {}).get("content", "")
-                if not generated_text:
+                content, reasoning = extract_ollama_message_parts(
+                    response.message if hasattr(response, 'message') else response.get("message", {})
+                )
+                if not content and not reasoning:
                     raise ValueError("No content in Ollama response")
                 
-                # Approximate token counts
                 input_tokens = count_tokens_approximate(prompt)
-                output_tokens = count_tokens_approximate(generated_text)
+                output_tokens = count_tokens_approximate(content) + count_tokens_approximate(reasoning)
                 
-                return generated_text, input_tokens, output_tokens
+                return content, reasoning, input_tokens, output_tokens
             except Exception as pull_error:
                 raise RuntimeError(f"Ollama API error: Failed to pull model {model_name}: {str(pull_error)}") from pull_error
         else:

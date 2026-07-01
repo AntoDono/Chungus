@@ -126,7 +126,7 @@ class Command(BaseCommand):
                         
                     elif model.provider == 'ollama':
                         formatted_messages = format_messages_for_ollama(messages, "")
-                        generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
+                        generated_text, _reasoning, input_tokens_actual, output_tokens = generate_with_ollama(
                             model, warmup_prompt, model.default_temperature, warmup_max_tokens,
                             None, None, None, None, None, None, formatted_messages, ""
                         )

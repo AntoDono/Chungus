@@ -4,6 +4,7 @@ from LLM.models import Model
 from LLM.utils import (
     NoActiveModelError,
     ModelTypeMismatchError,
+    extract_ollama_message_parts,
     normalize_thinking_input,
     resolve_requested_model,
     resolve_think_value,
@@ -119,3 +120,18 @@ class ModelResolutionTests(TestCase):
         Model.objects.all().update(is_active=False)
         with self.assertRaises(NoActiveModelError):
             resolve_requested_model('inactive-chat', 'chat')
+
+
+class OllamaMessageExtractionTests(SimpleTestCase):
+    def test_extract_from_dict(self):
+        content, thinking = extract_ollama_message_parts({
+            'content': 'answer',
+            'thinking': 'reasoning',
+        })
+        self.assertEqual(content, 'answer')
+        self.assertEqual(thinking, 'reasoning')
+
+    def test_extract_content_only(self):
+        content, thinking = extract_ollama_message_parts({'content': 'answer'})
+        self.assertEqual(content, 'answer')
+        self.assertEqual(thinking, '')

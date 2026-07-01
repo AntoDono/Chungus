@@ -13,6 +13,7 @@ from .utils import (
     format_messages_for_ollama,
     get_ollama_client,
     extract_images_from_content,
+    extract_ollama_message_parts,
     embed_with_vllm,
     embed_with_ollama,
     resolve_think_value,
@@ -256,18 +257,29 @@ def generate_chat_completion_vllm(engine, sampling_params, llm_request, input_to
 def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens):
     """Generate non-streaming chat completion using Ollama"""
     try:
-        generated_text, input_tokens_actual, output_tokens = generate_with_ollama(
+        generated_text, reasoning_text, input_tokens_actual, output_tokens = generate_with_ollama(
             model, prompt, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, messages, system_prompt
         )
         
+        completion_metadata = {'finish_reason': 'stop'}
+        if reasoning_text:
+            completion_metadata['reasoning_content'] = reasoning_text
+
         # Mark as completed
         llm_request.mark_completed(
-            response_text=generated_text,
+            response_text=generated_text or reasoning_text,
             input_tokens=input_tokens_actual,
             output_tokens=output_tokens,
-            metadata={'finish_reason': 'stop'}
+            metadata=completion_metadata,
         )
         
+        message = {
+            'role': 'assistant',
+            'content': generated_text,
+        }
+        if reasoning_text:
+            message['reasoning_content'] = reasoning_text
+
         # Format OpenAI-compatible response
         response_data = {
             'id': f'chatcmpl-{llm_request.id}',
@@ -276,10 +288,7 @@ def generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, m
             'model': llm_request.model.name,
             'choices': [{
                 'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': generated_text
-                },
+                'message': message,
                 'finish_reason': 'stop'
             }],
             'usage': {
@@ -323,6 +332,7 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                 options["repeat_penalty"] = float(repetition_penalty)
             
             accumulated_text = ""
+            accumulated_reasoning = ""
 
             stream_kwargs = dict(model=model_name, messages=ollama_messages, options=options, stream=True)
             apply_think_to_chat_kwargs(stream_kwargs, thinking)
@@ -332,10 +342,27 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
             
             for chunk in stream:
                 if hasattr(chunk, 'message'):
-                    delta_content = chunk.message.content or ""
+                    delta_content, delta_reasoning = extract_ollama_message_parts(chunk.message)
                 else:
-                    delta_content = chunk.get("message", {}).get("content", "")
+                    delta_content, delta_reasoning = extract_ollama_message_parts(chunk.get("message", {}))
                 
+                if delta_reasoning:
+                    accumulated_reasoning += delta_reasoning
+                    chunk_response = {
+                        'id': f'chatcmpl-{llm_request.id}',
+                        'object': 'chat.completion.chunk',
+                        'created': int(llm_request.created_at.timestamp()),
+                        'model': llm_request.model.name,
+                        'choices': [{
+                            'index': 0,
+                            'delta': {
+                                'reasoning_content': delta_reasoning
+                            },
+                            'finish_reason': None
+                        }]
+                    }
+                    yield f"data: {json.dumps(chunk_response)}\n\n"
+
                 if delta_content:
                     accumulated_text += delta_content
                     chunk_response = {
@@ -355,12 +382,18 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
                 
                 # Check if done
                 if (hasattr(chunk, 'done') and chunk.done) or (not hasattr(chunk, 'done') and chunk.get("done", False)):
-                    output_tokens = count_tokens_approximate(accumulated_text)
+                    output_tokens = (
+                        count_tokens_approximate(accumulated_text)
+                        + count_tokens_approximate(accumulated_reasoning)
+                    )
+                    completion_metadata = {'finish_reason': 'stop'}
+                    if accumulated_reasoning:
+                        completion_metadata['reasoning_content'] = accumulated_reasoning
                     llm_request.mark_completed(
-                        response_text=accumulated_text,
+                        response_text=accumulated_text or accumulated_reasoning,
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
-                        metadata={'finish_reason': 'stop'}
+                        metadata=completion_metadata,
                     )
                     
                     final_chunk = {

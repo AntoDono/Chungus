@@ -912,6 +912,7 @@ data: [DONE]</pre>
                 • Resolution order: request <code>thinking</code> → <code>reasoning_effort</code> → model <code>thinking_mode</code> → default.<br>
                 • <code>true</code> / <code>false</code> (or <code>"enabled"</code> / <code>"disabled"</code>) turn thinking on or off for models that support it.<br>
                 • Level values (<code>low</code>, <code>medium</code>, <code>high</code>) are passed through to Ollama's native <code>think</code> parameter.<br>
+                • Reasoning is returned separately as <code>reasoning_content</code> on the message (non-stream) or <code>delta.reasoning_content</code> (stream), before answer <code>content</code> chunks.<br>
                 • vLLM models ignore thinking parameters.
             </div>
         </div>

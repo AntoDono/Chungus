@@ -1,7 +1,11 @@
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
+from LLM.models import Model
 from LLM.utils import (
+    NoActiveModelError,
+    ModelTypeMismatchError,
     normalize_thinking_input,
+    resolve_requested_model,
     resolve_think_value,
     think_value_for_storage,
 )
@@ -53,3 +57,65 @@ class ThinkingModeTests(SimpleTestCase):
         self.assertEqual(think_value_for_storage(True), 'true')
         self.assertEqual(think_value_for_storage(False), 'false')
         self.assertEqual(think_value_for_storage('medium'), 'medium')
+
+
+class ModelResolutionTests(TestCase):
+    def setUp(self):
+        self.active_chat = Model.objects.create(
+            name='active-chat',
+            model_path='active-chat',
+            model_type='chat',
+            provider='ollama',
+            is_active=True,
+        )
+        self.inactive_chat = Model.objects.create(
+            name='inactive-chat',
+            model_path='inactive-chat',
+            model_type='chat',
+            provider='ollama',
+            is_active=False,
+        )
+        self.default_chat = Model.objects.create(
+            name='default-chat',
+            model_path='default-chat',
+            model_type='chat',
+            provider='ollama',
+            is_active=True,
+            is_default=True,
+        )
+
+    def test_uses_requested_active_model(self):
+        model, routed_from = resolve_requested_model('active-chat', 'chat')
+        self.assertEqual(model.name, 'active-chat')
+        self.assertIsNone(routed_from)
+
+    def test_routes_inactive_model_to_default(self):
+        model, routed_from = resolve_requested_model('inactive-chat', 'chat')
+        self.assertEqual(model.name, 'default-chat')
+        self.assertEqual(routed_from, 'inactive-chat')
+
+    def test_routes_missing_model_to_default(self):
+        model, routed_from = resolve_requested_model('missing-chat', 'chat')
+        self.assertEqual(model.name, 'default-chat')
+        self.assertEqual(routed_from, 'missing-chat')
+
+    def test_routes_missing_model_name_to_default(self):
+        model, routed_from = resolve_requested_model(None, 'chat')
+        self.assertEqual(model.name, 'default-chat')
+        self.assertIsNone(routed_from)
+
+    def test_wrong_model_type_raises(self):
+        embedding = Model.objects.create(
+            name='embed-model',
+            model_path='embed-model',
+            model_type='embedding',
+            provider='ollama',
+            is_active=True,
+        )
+        with self.assertRaises(ModelTypeMismatchError):
+            resolve_requested_model('embed-model', 'chat')
+
+    def test_no_active_models_raises(self):
+        Model.objects.all().update(is_active=False)
+        with self.assertRaises(NoActiveModelError):
+            resolve_requested_model('inactive-chat', 'chat')

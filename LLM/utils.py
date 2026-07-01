@@ -104,6 +104,62 @@ def apply_think_to_chat_kwargs(chat_kwargs: dict, think_value: Optional[ThinkVal
         chat_kwargs['think'] = think_value
 
 
+class ModelTypeMismatchError(Exception):
+    def __init__(self, model_name: str, expected: str, actual: str):
+        self.model_name = model_name
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f'Model "{model_name}" is not a {expected} model (got {actual})'
+        )
+
+
+class NoActiveModelError(Exception):
+    def __init__(self, model_type: str, requested_name: Optional[str] = None):
+        self.model_type = model_type
+        self.requested_name = requested_name
+        if requested_name:
+            message = (
+                f'No active {model_type} model available '
+                f'(requested "{requested_name}" is missing or inactive)'
+            )
+        else:
+            message = f'No active {model_type} model available'
+        super().__init__(message)
+
+
+def resolve_requested_model(
+    requested_name: Optional[str],
+    model_type: str,
+) -> tuple[Model, Optional[str]]:
+    """
+    Resolve a requested model name to an active Model.
+    Falls back to the default active model, then the first active model by name.
+    Returns (model, requested_name) when routing away from the requested model.
+    """
+    routed_from: Optional[str] = None
+
+    if requested_name:
+        try:
+            model = Model.objects.get(name=requested_name)
+            if model.is_active:
+                if model.model_type != model_type:
+                    raise ModelTypeMismatchError(requested_name, model_type, model.model_type)
+                return model, None
+            routed_from = requested_name
+        except Model.DoesNotExist:
+            routed_from = requested_name
+
+    active_models = Model.objects.filter(is_active=True, model_type=model_type)
+    fallback = active_models.filter(is_default=True).first()
+    if fallback is None:
+        fallback = active_models.order_by('name').first()
+    if fallback is None:
+        raise NoActiveModelError(model_type, routed_from)
+
+    return fallback, routed_from
+
+
 # Global engine cache - one engine per model
 _vllm_engines: Dict[str, Any] = {}
 _vllm_embedding_engines: Dict[str, Any] = {}

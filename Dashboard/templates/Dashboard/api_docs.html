@@ -478,7 +478,8 @@ data.data.forEach(model => {
 }</pre>
             </div>
             <div class="note">
-                <strong>Note:</strong> Only active models are returned. Use the model <code>id</code> field when making chat completion requests.
+                <strong>Note:</strong> Only active models are returned. Use the model <code>id</code> field when making chat completion requests.<br>
+                If a requested model is missing or inactive, CHUNGUS routes to the active default model for that type (<code>is_default</code> in admin), or the first active model by name. The response <code>model</code> field shows the model actually used.
             </div>
         </div>
 
@@ -1413,8 +1414,8 @@ console.log(`Embedding dimension: ${embedding.length}`);</pre>
             </div>
             <div class="note">
                 <strong>Common Error Codes:</strong><br>
-                • <code>model_not_found</code> - The specified model doesn't exist or is inactive<br>
-                • <code>invalid_model_type</code> - The specified model is not an embedding model (for embeddings endpoint)<br>
+                • <code>model_not_found</code> - No active model is available for the request (missing, inactive, and no fallback)<br>
+                • <code>invalid_model_type</code> - The specified model is the wrong type for this endpoint<br>
                 • <code>invalid_messages</code> - Messages array is empty or invalid<br>
                 • <code>missing_input</code> - Input field is missing (for embeddings endpoint)<br>
                 • <code>invalid_json</code> - Request body is not valid JSON<br>

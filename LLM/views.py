@@ -18,6 +18,9 @@ from .utils import (
     resolve_think_value,
     think_value_for_storage,
     apply_think_to_chat_kwargs,
+    resolve_requested_model,
+    ModelTypeMismatchError,
+    NoActiveModelError,
 )
 
 from vllm import SamplingParams
@@ -55,27 +58,24 @@ def chat_completions(request):
     thinking = data.get('thinking')  # default / low / medium / high / true / false
     reasoning_effort = data.get('reasoning_effort')  # OpenAI-compatible alias
     
-    # Validate model
     try:
-        model = Model.objects.get(name=model_name, is_active=True)
-    except Model.DoesNotExist:
+        model, routed_from = resolve_requested_model(model_name, 'chat')
+    except ModelTypeMismatchError as exc:
         return JsonResponse({
             'error': {
-                'message': f'Model "{model_name}" not found or not active',
+                'message': str(exc),
                 'type': 'invalid_request_error',
-                'code': 'model_not_found'
-            }
-        }, status=404)
-    
-    # Validate that model is a chat model
-    if model.model_type != 'chat':
-        return JsonResponse({
-            'error': {
-                'message': f'Model "{model_name}" is not a chat model',
-                'type': 'invalid_request_error',
-                'code': 'invalid_model_type'
+                'code': 'invalid_model_type',
             }
         }, status=400)
+    except NoActiveModelError as exc:
+        return JsonResponse({
+            'error': {
+                'message': str(exc),
+                'type': 'invalid_request_error',
+                'code': 'model_not_found',
+            }
+        }, status=404)
     
     # Validate messages
     if not messages or not isinstance(messages, list):
@@ -129,6 +129,11 @@ def chat_completions(request):
 
     prompt = format_messages_for_prompt(formatted_messages, system_prompt)
 
+    request_metadata = {'messages': messages}
+    if routed_from:
+        request_metadata['requested_model'] = routed_from
+        request_metadata['routed_to'] = model.name
+
     # Create LLMRequest record
     llm_request = LLMRequest.objects.create(
         api_key=request.api_key,
@@ -145,7 +150,7 @@ def chat_completions(request):
         repetition_penalty=repetition_penalty,
         thinking=think_value_for_storage(think_value),
         stream=stream,
-        request_metadata={'messages': messages}
+        request_metadata=request_metadata,
     )
     
     try:
@@ -540,27 +545,24 @@ def embeddings(request):
     model_name = data.get('model')
     input_data = data.get('input')
     
-    # Validate model
     try:
-        model = Model.objects.get(name=model_name, is_active=True)
-    except Model.DoesNotExist:
+        model, routed_from = resolve_requested_model(model_name, 'embedding')
+    except ModelTypeMismatchError as exc:
         return JsonResponse({
             'error': {
-                'message': f'Model "{model_name}" not found or not active',
+                'message': str(exc),
                 'type': 'invalid_request_error',
-                'code': 'model_not_found'
-            }
-        }, status=404)
-    
-    # Validate that model is an embedding model
-    if model.model_type != 'embedding':
-        return JsonResponse({
-            'error': {
-                'message': f'Model "{model_name}" is not an embedding model',
-                'type': 'invalid_request_error',
-                'code': 'invalid_model_type'
+                'code': 'invalid_model_type',
             }
         }, status=400)
+    except NoActiveModelError as exc:
+        return JsonResponse({
+            'error': {
+                'message': str(exc),
+                'type': 'invalid_request_error',
+                'code': 'model_not_found',
+            }
+        }, status=404)
     
     # Validate input
     if input_data is None:
@@ -607,6 +609,11 @@ def embeddings(request):
     
     # Create the input string for logging (join all texts)
     input_text = '\n'.join(texts) if isinstance(input_data, list) else input_data
+
+    embedding_metadata = {'input': input_data, 'type': 'embedding'}
+    if routed_from:
+        embedding_metadata['requested_model'] = routed_from
+        embedding_metadata['routed_to'] = model.name
     
     # Create LLMRequest record
     llm_request = LLMRequest.objects.create(
@@ -617,7 +624,7 @@ def embeddings(request):
         temperature=None,
         max_tokens=None,
         stream=False,
-        request_metadata={'input': input_data, 'type': 'embedding'}
+        request_metadata=embedding_metadata,
     )
     
     try:

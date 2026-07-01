@@ -64,6 +64,10 @@ class Model(models.Model):
     )
     is_active = models.BooleanField(default=True, help_text="Whether this model is available")
     alwayswarm = models.BooleanField(default=False, help_text="Keep this model warm by sending periodic requests")
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Use as fallback when the requested model is missing or inactive",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -175,6 +179,14 @@ class Model(models.Model):
     
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            Model.objects.filter(
+                model_type=self.model_type,
+                is_default=True,
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
     
     def increment_stats(self, input_tokens=0, output_tokens=0, success=True):
         """Increment statistics for this model"""

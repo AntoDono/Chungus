@@ -244,6 +244,20 @@ for line in response.iter_lines():
                 continue
 ```
 
+#### Thinking Mode (Ollama)
+
+For thinking-capable Ollama models (e.g. QwQ, Qwen3, DeepSeek R1, GPT-OSS), set `thinking` on the request to control reasoning depth. Omit it or use `"default"` to let the model decide.
+
+```python
+data = {
+    "model": "gpt-oss",
+    "messages": [{"role": "user", "content": "Explain quantum computing."}],
+    "thinking": "low",  # default | low | medium | high | max | true | false
+}
+```
+
+You can also use the OpenAI-compatible `reasoning_effort` field (`none`, `low`, `medium`, `high`) when `thinking` is not set.
+
 #### Embeddings Request
 
 CHUNGUS also provides an OpenAI-compatible embeddings endpoint at `/api/v1/embeddings`.
@@ -404,6 +418,7 @@ Chungus/
 
 ### Chat Completions
 - `POST /api/v1/chat/completions` - Generate chat completions (streaming and non-streaming)
+  - Optional `thinking` / `reasoning_effort` parameters for Ollama thinking models
 
 ### Embeddings
 - `POST /api/v1/embeddings` - Generate embeddings for text inputs (supports single string or array of strings)

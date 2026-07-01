@@ -369,6 +369,7 @@
                 <li><a href="#list-models" class="sidebar-link">List Models</a></li>
                 <li><a href="#non-streaming" class="sidebar-link">Non-Streaming</a></li>
                 <li><a href="#streaming" class="sidebar-link">Streaming</a></li>
+                <li><a href="#thinking-mode" class="sidebar-link">Thinking Mode</a></li>
                 <li><a href="#image-input" class="sidebar-link">Image Input</a></li>
                 <li><a href="#embeddings" class="sidebar-link">Embeddings</a></li>
                 <li><a href="#message-format" class="sidebar-link">Message Format</a></li>
@@ -540,6 +541,18 @@ data.data.forEach(model => {
                         <td>integer</td>
                         <td>No</td>
                         <td>Top-k sampling parameter</td>
+                    </tr>
+                    <tr>
+                        <td><code>thinking</code></td>
+                        <td>string or boolean</td>
+                        <td>No</td>
+                        <td>Thinking/reasoning mode for Ollama models. See <a href="#thinking-mode" style="color: #4ade80;">Thinking Mode</a> (default: model default)</td>
+                    </tr>
+                    <tr>
+                        <td><code>reasoning_effort</code></td>
+                        <td>string</td>
+                        <td>No</td>
+                        <td>OpenAI-compatible alias for <code>thinking</code> (<code>none</code>, <code>low</code>, <code>medium</code>, <code>high</code>)</td>
                     </tr>
                 </tbody>
             </table>
@@ -820,6 +833,85 @@ data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190
 data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"llama-2-7b-chat","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":25,"completion_tokens":8,"total_tokens":33}}
 
 data: [DONE]</pre>
+            </div>
+        </div>
+
+        <div class="api-section" id="thinking-mode">
+            <h2>THINKING MODE</h2>
+
+            <div class="endpoint-info">
+                <strong style="color: #4ade80;">Endpoint:</strong> <code>POST /api/v1/chat/completions</code><br>
+                <strong style="color: #4ade80;">Provider:</strong> Ollama only (e.g. QwQ, Qwen3, DeepSeek R1, GPT-OSS)
+            </div>
+
+            <p style="color: #ffffff; line-height: 1.8; margin-bottom: 1em;">
+                Thinking-capable models can run an internal reasoning step before producing a final answer.
+                Use the <code>thinking</code> request parameter to control this behavior per request.
+                If omitted, the model's configured default thinking mode is used (admin: <code>thinking_mode</code>).
+            </p>
+
+            <h3>Request Parameters</h3>
+            <table class="param-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Values</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>thinking</code></td>
+                        <td>string or boolean</td>
+                        <td><code>"default"</code>, <code>"low"</code>, <code>"medium"</code>, <code>"high"</code>, <code>"max"</code>, <code>true</code>, <code>false</code></td>
+                        <td>Primary parameter. <code>"default"</code> or omitting the field lets the model/provider decide.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reasoning_effort</code></td>
+                        <td>string</td>
+                        <td><code>"none"</code>, <code>"low"</code>, <code>"medium"</code>, <code>"high"</code></td>
+                        <td>OpenAI-compatible alias. Used only when <code>thinking</code> is not set. <code>"none"</code> disables thinking.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Example — Low Thinking</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre class="code-content">curl -X POST <span class="base-url">https://your-domain.com/api/v1</span>/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "gpt-oss",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in one paragraph."}
+    ],
+    "thinking": "low"
+  }'</pre>
+            </div>
+
+            <h3>Example — OpenAI-style reasoning_effort</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+                <pre class="code-content">curl -X POST <span class="base-url">https://your-domain.com/api/v1</span>/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "gpt-oss",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in one paragraph."}
+    ],
+    "reasoning_effort": "high"
+  }'</pre>
+            </div>
+
+            <div class="note">
+                <strong>Notes:</strong><br>
+                • Resolution order: request <code>thinking</code> → <code>reasoning_effort</code> → model <code>thinking_mode</code> → default.<br>
+                • <code>true</code> / <code>false</code> (or <code>"enabled"</code> / <code>"disabled"</code>) turn thinking on or off for models that support it.<br>
+                • Level values (<code>low</code>, <code>medium</code>, <code>high</code>) are passed through to Ollama's native <code>think</code> parameter.<br>
+                • vLLM models ignore thinking parameters.
             </div>
         </div>
 

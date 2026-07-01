@@ -67,20 +67,22 @@ class Model(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Thinking / reasoning mode (for models that support it, e.g. QwQ, Qwen3)
+    # Thinking / reasoning mode (for models that support it, e.g. QwQ, Qwen3, GPT-OSS)
     THINKING_MODE_CHOICES = [
-        ('auto', 'Auto (let model decide)'),
+        ('default', 'Default (let model decide)'),
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
         ('enabled', 'Enabled'),
         ('disabled', 'Disabled'),
+        ('auto', 'Auto (alias for default)'),
     ]
     thinking_mode = models.CharField(
         max_length=10,
         choices=THINKING_MODE_CHOICES,
-        default='auto',
-        help_text="Controls the model's internal reasoning/thinking mode (Ollama only)"
+        default='default',
+        help_text="Default thinking mode for this model (Ollama only)"
     )
-    
-    # Provider selection
     PROVIDER_CHOICES = [
         ('vllm', 'vLLM'),
         ('ollama', 'Ollama'),
@@ -146,19 +148,6 @@ class Model(models.Model):
     default_repetition_penalty = models.FloatField(
         default=1.0,
         help_text="Default repetition penalty"
-    )
-    
-    # Thinking / reasoning mode (for models that support it, e.g. QwQ, Qwen3)
-    THINKING_MODE_CHOICES = [
-        ('auto', 'Auto (let model decide)'),
-        ('enabled', 'Enabled'),
-        ('disabled', 'Disabled'),
-    ]
-    thinking_mode = models.CharField(
-        max_length=10,
-        choices=THINKING_MODE_CHOICES,
-        default='auto',
-        help_text="Controls the model's internal reasoning/thinking mode (Ollama only)"
     )
 
     # HuggingFace authentication
@@ -246,8 +235,12 @@ class LLMRequest(models.Model):
     min_p = models.FloatField(null=True, blank=True, help_text="Min-p sampling parameter")
     presence_penalty = models.FloatField(null=True, blank=True, help_text="Presence penalty")
     repetition_penalty = models.FloatField(null=True, blank=True, help_text="Repetition penalty")
-    thinking = models.BooleanField(null=True, blank=True, help_text="Override model thinking mode for this request (null = use model default)")
-    thinking = models.BooleanField(null=True, blank=True, help_text="Override model thinking mode for this request (null = use model default)")
+    thinking = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        help_text="Thinking mode for this request (null = use model default)",
+    )
     stream = models.BooleanField(default=False, help_text="Whether to stream the response")
     
     # Response details

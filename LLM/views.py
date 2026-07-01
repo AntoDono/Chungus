@@ -14,7 +14,10 @@ from .utils import (
     get_ollama_client,
     extract_images_from_content,
     embed_with_vllm,
-    embed_with_ollama
+    embed_with_ollama,
+    resolve_think_value,
+    think_value_for_storage,
+    apply_think_to_chat_kwargs,
 )
 
 from vllm import SamplingParams
@@ -49,7 +52,8 @@ def chat_completions(request):
     min_p = data.get('min_p')
     presence_penalty = data.get('presence_penalty')
     repetition_penalty = data.get('repetition_penalty')
-    thinking = data.get('thinking')  # True / False / None
+    thinking = data.get('thinking')  # default / low / medium / high / true / false
+    reasoning_effort = data.get('reasoning_effort')  # OpenAI-compatible alias
     
     # Validate model
     try:
@@ -98,13 +102,17 @@ def chat_completions(request):
         presence_penalty = model.default_presence_penalty
     if repetition_penalty is None:
         repetition_penalty = model.default_repetition_penalty
-    # Resolve thinking: request value wins; fall back to model-level thinking_mode
-    if thinking is None:
-        if model.thinking_mode == 'enabled':
-            thinking = True
-        elif model.thinking_mode == 'disabled':
-            thinking = False
-        # 'auto' → leave as None (don't pass think= to Ollama)
+
+    try:
+        think_value = resolve_think_value(thinking, reasoning_effort, model.thinking_mode)
+    except ValueError as exc:
+        return JsonResponse({
+            'error': {
+                'message': str(exc),
+                'type': 'invalid_request_error',
+                'code': 'invalid_thinking',
+            }
+        }, status=400)
     
     # Format prompt from messages; collect images from all message content parts.
     # Content may be a plain string or an OpenAI multimodal list.
@@ -135,7 +143,7 @@ def chat_completions(request):
         min_p=min_p,
         presence_penalty=presence_penalty,
         repetition_penalty=repetition_penalty,
-        thinking=thinking,
+        thinking=think_value_for_storage(think_value),
         stream=stream,
         request_metadata={'messages': messages}
     )
@@ -171,9 +179,9 @@ def chat_completions(request):
         elif model.provider == 'ollama':
             # Images are embedded in formatted_messages and handled by format_messages_for_ollama
             if stream:
-                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens)
+                return stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, think_value, input_tokens)
             else:
-                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, thinking, input_tokens)
+                return generate_chat_completion_ollama(model, llm_request, prompt, system_prompt, formatted_messages, temperature, max_tokens, top_p, top_k, min_p, presence_penalty, repetition_penalty, think_value, input_tokens)
         
         else:
             raise ValueError(f"Unknown provider: {model.provider}")
@@ -312,8 +320,7 @@ def stream_chat_completion_ollama(model, llm_request, prompt, system_prompt, mes
             accumulated_text = ""
 
             stream_kwargs = dict(model=model_name, messages=ollama_messages, options=options, stream=True)
-            if thinking is not None:
-                stream_kwargs['think'] = thinking
+            apply_think_to_chat_kwargs(stream_kwargs, thinking)
 
             # Stream response from Ollama
             stream = client.chat(**stream_kwargs)

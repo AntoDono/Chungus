@@ -3,7 +3,15 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.db.models import Count
 from .models import APIKey, Model, LLMRequest
-from typing import Optional, Dict, List, Union, Any
+from typing import Optional, Dict, List, Union, Any, Literal
+
+ThinkValue = Union[bool, str]
+ThinkingLevel = Literal['low', 'medium', 'high', 'max']
+
+THINKING_LEVELS = frozenset({'low', 'medium', 'high', 'max'})
+THINKING_DISABLE = frozenset({'false', 'disabled', 'none', 'off', 'nothink'})
+THINKING_ENABLE = frozenset({'true', 'enabled', 'on'})
+THINKING_DEFAULT = frozenset({'default', 'auto', ''})
 import threading
 import os
 import io
@@ -19,6 +27,81 @@ try:
     _PIL_AVAILABLE = True
 except ImportError:
     _PIL_AVAILABLE = False
+
+
+def normalize_thinking_input(value: Any) -> Optional[str]:
+    """
+    Normalize API thinking/reasoning input to a canonical string, or None for default.
+    Accepts bool, str, or None. Raises ValueError for invalid values.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if not isinstance(value, str):
+        raise ValueError(f'thinking must be a boolean or string, got {type(value).__name__}')
+
+    normalized = value.strip().lower()
+    if normalized in THINKING_DEFAULT:
+        return None
+    if normalized in THINKING_LEVELS:
+        return normalized
+    if normalized in THINKING_DISABLE:
+        return 'false'
+    if normalized in THINKING_ENABLE:
+        return 'true'
+    raise ValueError(
+        f"Invalid thinking value '{value}'. "
+        "Use 'default', 'low', 'medium', 'high', 'max', true/false, or enabled/disabled."
+    )
+
+
+def resolve_think_value(
+    request_thinking: Any,
+    reasoning_effort: Any,
+    model_thinking_mode: str,
+) -> Optional[ThinkValue]:
+    """
+    Resolve the value to pass to Ollama's think parameter.
+    None means omit think (model/provider default).
+    """
+    raw = request_thinking if request_thinking is not None else reasoning_effort
+
+    if raw is not None:
+        normalized = normalize_thinking_input(raw)
+        if normalized is None:
+            return None
+        if normalized == 'true':
+            return True
+        if normalized == 'false':
+            return False
+        return normalized
+
+    mode = (model_thinking_mode or 'default').strip().lower()
+    if mode in THINKING_DEFAULT:
+        return None
+    if mode == 'enabled':
+        return True
+    if mode == 'disabled':
+        return False
+    if mode in THINKING_LEVELS:
+        return mode
+    return None
+
+
+def think_value_for_storage(think_value: Optional[ThinkValue]) -> Optional[str]:
+    """Serialize resolved think value for LLMRequest storage."""
+    if think_value is None:
+        return None
+    if isinstance(think_value, bool):
+        return 'true' if think_value else 'false'
+    return think_value
+
+
+def apply_think_to_chat_kwargs(chat_kwargs: dict, think_value: Optional[ThinkValue]) -> None:
+    """Add Ollama think parameter when a non-default value is resolved."""
+    if think_value is not None:
+        chat_kwargs['think'] = think_value
 
 
 # Global engine cache - one engine per model
@@ -248,7 +331,7 @@ def get_ollama_client(model: Model):
 def generate_with_ollama(model: Model, prompt: str, temperature: float, max_tokens: int,
                          top_p: Optional[float] = None, top_k: Optional[int] = None,
                          min_p: Optional[float] = None, presence_penalty: Optional[float] = None,
-                         repetition_penalty: Optional[float] = None, thinking: Optional[bool] = None,
+                         repetition_penalty: Optional[float] = None, thinking: Optional[ThinkValue] = None,
                          messages: Optional[list] = None, system_prompt: str = "") -> tuple[str, int, int]:
     """Generate text using Ollama Python library"""
     client = get_ollama_client(model)
@@ -280,8 +363,7 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
     
     try:
         chat_kwargs = dict(model=model_name, messages=ollama_messages, options=options)
-        if thinking is not None:
-            chat_kwargs['think'] = thinking
+        apply_think_to_chat_kwargs(chat_kwargs, thinking)
         response = client.chat(**chat_kwargs)
         
         # Support both dict responses (old ollama lib) and Pydantic object responses (new ollama lib)
@@ -316,11 +398,9 @@ def generate_with_ollama(model: Model, prompt: str, temperature: float, max_toke
                 print(f"Successfully pulled model {model_name}. Retrying generation...")
                 
                 # Retry generation after pulling
-                response = client.chat(
-                    model=model_name,
-                    messages=ollama_messages,
-                    options=options
-                )
+                retry_kwargs = dict(model=model_name, messages=ollama_messages, options=options)
+                apply_think_to_chat_kwargs(retry_kwargs, thinking)
+                response = client.chat(**retry_kwargs)
                 
                 generated_text = response.get("message", {}).get("content", "")
                 if not generated_text:

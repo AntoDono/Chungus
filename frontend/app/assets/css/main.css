@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-paper font-sans text-paper-ink dark:bg-night dark:text-night-ink;
+    background-image:
+      radial-gradient(ellipse at 15% 0%, rgb(180 35 24 / 0.07) 0%, transparent 45%),
+      linear-gradient(180deg, #f3ece1 0%, #e8dfd2 100%);
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(ellipse at 85% 5%, rgb(226 74 58 / 0.12) 0%, transparent 40%),
+      linear-gradient(180deg, #141210 0%, #0c0b0a 100%);
+  }
+
+  ::selection {
+    @apply bg-oxide/20 text-oxide;
+  }
+}
+
+@layer components {
+  .hairline {
+    @apply border border-paper-rule dark:border-night-rule;
+  }
+
+  .stagger > * {
+    animation: fadeUp 0.55s ease-out both;
+  }
+
+  .stagger > *:nth-child(1) { animation-delay: 0.04s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.1s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.16s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.22s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.28s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.34s; }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

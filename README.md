@@ -13,7 +13,7 @@ Personal GPU inference gateway: OpenAI-compatible API, vLLM and Ollama backends,
 | [`backend/`](backend/) | Django API (inference, `/internal` session API, Django admin) |
 
 ```
-Browser → :3000 (gateway)
+Browser → :3567 (gateway)
               ├─ /, /docs, /login, /dashboard → Nuxt (static or dev :3001)
               ├─ /v1/*, /api/v1/* → Django
               ├─ /internal/* → Django
@@ -47,7 +47,7 @@ cp frontend/.env.example frontend/.env
 
 ```bash
 npm run build    # nuxt generate → frontend/.output/public
-npm start        # gateway on http://localhost:3000, Django on 127.0.0.1:8000
+npm start        # gateway on http://localhost:3567, Django on 127.0.0.1:8000
 ```
 
 ### Run (development)
@@ -60,7 +60,7 @@ npm run frontend:dev
 npm run dev
 ```
 
-Open **http://localhost:3000**. Django admin: **http://localhost:3000/admin/**.
+Open **http://localhost:3567**. Django admin: **http://localhost:3567/admin/**.
 
 ### First-time backend
 
@@ -82,7 +82,7 @@ Bearer auth on `/v1/*` (gateway also accepts `/api/v1/*` as an alias):
 
 Responses include `X-RateLimit-*` headers; `429` responses include `Retry-After`.
 
-Interactive docs: **http://localhost:3000/docs**
+Interactive docs: **http://localhost:3567/docs**
 
 ## Configuration
 

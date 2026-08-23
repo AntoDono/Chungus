@@ -32,7 +32,7 @@ SECRET_KEY = 'django-insecure-$jvffy=n=gwnc1a9hls@@ryumh=-e^umnjwd93juc-67!o11i@
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost,testserver').split(',')
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000',
+    'http://localhost:3567,http://127.0.0.1:3567,http://localhost:8000,http://127.0.0.1:8000',
 ).split(',')
 
 # Application definition

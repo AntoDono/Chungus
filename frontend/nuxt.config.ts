@@ -11,9 +11,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   colorMode: {
     classSuffix: '',
-    preference: 'light',
-    fallback: 'light',
-    storageKey: 'chungus-color-mode',
+    preference: 'dark',
+    fallback: 'dark',
+    storageKey: 'chungus-color-mode-v2',
   },
   app: {
     head: {

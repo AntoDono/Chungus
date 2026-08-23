@@ -65,7 +65,7 @@ const embedCurl = computed(
     <article class="space-y-16 text-[0.95rem] leading-relaxed">
       <header>
         <p class="text-[0.7rem] uppercase tracking-ledger text-paper-faint">Reference</p>
-        <h1 class="mt-2 font-display text-5xl">API ledger</h1>
+        <h1 class="mt-2 font-display text-5xl">API docs</h1>
         <p class="mt-4 max-w-2xl text-paper-faint dark:text-night-faint">
           Canonical paths are <code class="font-mono text-oxide">/v1/…</code>.
           The gateway also accepts <code class="font-mono">/api/v1/…</code> and rewrites to

@@ -8,10 +8,16 @@ const models = ref<ModelRecord[]>([])
 const editing = ref<Partial<ModelRecord> | null>(null)
 const error = ref('')
 const saving = ref(false)
+const loading = ref(true)
 
 async function load() {
-  const payload = await api('/internal/admin/models')
-  models.value = unwrapList<ModelRecord>(payload, ['models'])
+  if (!models.value.length) loading.value = true
+  try {
+    const payload = await api('/internal/admin/models')
+    models.value = unwrapList<ModelRecord>(payload, ['models'])
+  } finally {
+    loading.value = false
+  }
 }
 
 function openCreate() {
@@ -64,8 +70,9 @@ onMounted(load)
     </div>
 
     <p v-if="error" class="mb-4 text-oxide">{{ error }}</p>
+    <LoadingBlock v-if="loading" label="Loading models" height="8rem" />
 
-    <div class="hairline overflow-x-auto">
+    <div v-else class="hairline overflow-x-auto">
       <table class="min-w-full text-left text-sm">
         <thead class="text-[0.65rem] uppercase tracking-ledger text-paper-faint">
           <tr>

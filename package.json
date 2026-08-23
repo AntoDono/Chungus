@@ -5,12 +5,12 @@
   "description": "CHUNGUS gateway — spawn Django, proxy APIs, serve the Nuxt frontend",
   "main": "server.js",
   "scripts": {
-    "postinstall": "npm install --prefix frontend",
-    "build": "npm run generate --prefix frontend",
+    "postinstall": "bun install --cwd frontend",
+    "build": "bun run --cwd frontend generate",
     "start": "node server.js",
     "dev": "NUXT_DEV=1 node server.js",
-    "frontend:dev": "npm run dev --prefix frontend",
-    "frontend:generate": "npm run generate --prefix frontend"
+    "frontend:dev": "bun run --cwd frontend dev",
+    "frontend:generate": "bun run --cwd frontend generate"
   },
   "license": "ISC",
   "dependencies": {

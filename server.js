@@ -10,9 +10,9 @@ const ROOT = __dirname
 const BACKEND = path.join(ROOT, 'backend')
 const STATIC_DIR = path.join(ROOT, 'frontend', '.output', 'public')
 
-const PUBLIC_PORT = Number(process.env.PORT || 3000)
+const PUBLIC_PORT = Number(process.env.PORT || 3567)
 const DJANGO_HOST = process.env.DJANGO_HOST || '127.0.0.1'
-const DJANGO_PORT = Number(process.env.DJANGO_PORT || 8000)
+const DJANGO_PORT = Number(process.env.DJANGO_PORT || 9786)
 const NUXT_DEV = process.env.NUXT_DEV === '1'
 const NUXT_PORT = Number(process.env.NUXT_PORT || 3001)
 const HEALTH_TIMEOUT_MS = Number(process.env.DJANGO_HEALTH_TIMEOUT_MS || 60_000)

@@ -4,18 +4,24 @@ import type { HistoryPage } from '~/types/api'
 definePageMeta({ middleware: ['auth', 'admin'] })
 
 const page = ref<HistoryPage | null>(null)
+const loading = ref(true)
 const filters = ref({ model_id: '', api_key_id: '', status: '' })
 
 async function load(p = 1) {
-  page.value = await api<HistoryPage>('/internal/admin/request-history', {
-    query: {
-      page: p,
-      per_page: 50,
-      model_id: filters.value.model_id || undefined,
-      api_key_id: filters.value.api_key_id || undefined,
-      status: filters.value.status || undefined,
-    },
-  })
+  loading.value = true
+  try {
+    page.value = await api<HistoryPage>('/internal/admin/request-history', {
+      query: {
+        page: p,
+        per_page: 50,
+        model_id: filters.value.model_id || undefined,
+        api_key_id: filters.value.api_key_id || undefined,
+        status: filters.value.status || undefined,
+      },
+    })
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => load())
@@ -31,6 +37,11 @@ onMounted(() => load())
       <input v-model="filters.status" placeholder="status" class="border-b border-paper-rule bg-transparent py-1 outline-none dark:border-night-rule">
       <button type="submit" class="text-[0.7rem] uppercase tracking-ledger text-oxide">Filter</button>
     </form>
-    <RequestTable :rows="page?.requests || []" :pagination="page?.pagination" @page="load" />
+    <RequestTable
+      :rows="page?.requests || []"
+      :pagination="page?.pagination"
+      :loading="loading"
+      @page="load"
+    />
   </div>
 </template>

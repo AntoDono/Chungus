@@ -35,7 +35,7 @@ cp .env.example .env   # optional — NUXT_PORT, etc.
 ```bash
 # repo root
 npm run frontend:dev   # this app on :3001
-npm run dev            # gateway on :3000 → proxies pages to :3001
+npm run dev            # gateway on :3567 → proxies pages to :3001
 ```
 
 **Frontend only** (API calls will fail unless gateway or Django is proxied):

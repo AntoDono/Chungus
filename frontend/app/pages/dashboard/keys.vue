@@ -17,14 +17,20 @@ const form = ref({
   user_id: null as number | null,
 })
 const showForm = ref(false)
+const loading = ref(true)
 
 async function load() {
-  const [keyPayload, userPayload] = await Promise.all([
-    api('/internal/admin/keys'),
-    api('/internal/admin/users'),
-  ])
-  keys.value = unwrapList<ApiKeyRecord>(keyPayload, ['keys', 'api_keys'])
-  users.value = unwrapList<AdminUser>(userPayload, ['users'])
+  if (!keys.value.length) loading.value = true
+  try {
+    const [keyPayload, userPayload] = await Promise.all([
+      api('/internal/admin/keys'),
+      api('/internal/admin/users'),
+    ])
+    keys.value = unwrapList<ApiKeyRecord>(keyPayload, ['keys', 'api_keys'])
+    users.value = unwrapList<AdminUser>(userPayload, ['users'])
+  } finally {
+    loading.value = false
+  }
 }
 
 function openCreate() {
@@ -95,11 +101,12 @@ onMounted(load)
       </button>
     </div>
     <p v-if="error" class="mb-4 text-oxide">{{ error }}</p>
+    <LoadingBlock v-if="loading" label="Loading keys" height="8rem" />
     <p v-if="createdSecret" class="mb-4 hairline p-4 font-mono text-sm">
       Secret (shown once): {{ createdSecret }}
     </p>
 
-    <div class="hairline overflow-x-auto">
+    <div v-else class="hairline overflow-x-auto">
       <table class="min-w-full text-left text-sm">
         <thead class="text-[0.65rem] uppercase tracking-ledger text-paper-faint">
           <tr>

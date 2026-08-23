@@ -1,21 +1,25 @@
 import json
+import time
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncHour
+from django.db.models.functions import Coalesce, TruncHour
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from .gpu import gpu_status
 from .models import APIKey, LLMRequest, Model, UserAPIKey
 from .session_auth import require_admin, require_session, user_payload
 from .session_auth import GROUP_ADMIN, GROUP_USER, get_user_role, is_admin_user, set_user_role
 from .utils import get_usage_window_counts
+
+_PROCESS_STARTED = time.monotonic()
 
 
 MODEL_BODY_FIELDS = (
@@ -187,18 +191,75 @@ def _paginate_requests(queryset, request):
     })
 
 
+def _hour_key(dt):
+    if timezone.is_aware(dt):
+        dt = timezone.localtime(dt)
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
+def hourly_request_series(hours=24):
+    now = _hour_key(timezone.now())
+    start = now - timedelta(hours=hours - 1)
+    try:
+        rows = (
+            LLMRequest.objects.filter(created_at__gte=start)
+            .annotate(bucket=TruncHour('created_at'))
+            .values('bucket')
+            .annotate(count=Count('id'), tokens=Coalesce(Sum('total_tokens'), 0))
+            .order_by('bucket')
+        )
+        by_hour = {}
+        for row in rows:
+            if not row['bucket']:
+                continue
+            by_hour[_hour_key(row['bucket'])] = {
+                'count': row['count'] or 0,
+                'tokens': row['tokens'] or 0,
+            }
+    except Exception:
+        by_hour = {}
+        for created_at in LLMRequest.objects.filter(created_at__gte=start).values_list('created_at', 'total_tokens'):
+            key = _hour_key(created_at[0])
+            slot = by_hour.setdefault(key, {'count': 0, 'tokens': 0})
+            slot['count'] += 1
+            slot['tokens'] += created_at[1] or 0
+
+    series = []
+    cursor = start
+    for _ in range(hours):
+        hit = by_hour.get(cursor, {'count': 0, 'tokens': 0})
+        series.append({
+            'hour': cursor.isoformat(),
+            'count': hit['count'],
+            'tokens': hit['tokens'],
+        })
+        cursor += timedelta(hours=1)
+    return series
+
+
 @require_GET
 def health(request):
-    return JsonResponse({'status': 'ok'})
+    return JsonResponse({
+        'status': 'ok',
+        'uptime_seconds': int(time.monotonic() - _PROCESS_STARTED),
+    })
 
 
 @require_GET
 def public_stats(request):
     token_stats = LLMRequest.objects.aggregate(total_tokens=Sum('total_tokens'))
+    last_24h = timezone.now() - timedelta(hours=24)
     return JsonResponse({
         'total_requests': LLMRequest.objects.count(),
         'total_tokens': token_stats.get('total_tokens') or 0,
+        'requests_24h': LLMRequest.objects.filter(created_at__gte=last_24h).count(),
+        'hourly_requests': hourly_request_series(),
     })
+
+
+@require_GET
+def public_gpu(request):
+    return JsonResponse(gpu_status())
 
 
 @require_GET
@@ -494,25 +555,7 @@ def admin_user_update(request, user_id):
 def admin_chart_data(request):
     now = timezone.now()
     last_24h = now - timedelta(hours=24)
-
-    try:
-        hourly_data = list(
-            LLMRequest.objects.filter(created_at__gte=last_24h)
-            .annotate(hour=TruncHour('created_at'))
-            .values('hour')
-            .annotate(count=Count('id'))
-            .order_by('hour')
-        )
-        for row in hourly_data:
-            if row['hour']:
-                row['hour'] = row['hour'].isoformat()
-    except Exception:
-        requests = list(LLMRequest.objects.filter(created_at__gte=last_24h).values('created_at'))
-        hourly_counts = {}
-        for req in requests:
-            hour = req['created_at'].replace(minute=0, second=0, microsecond=0)
-            hourly_counts[hour.isoformat()] = hourly_counts.get(hour.isoformat(), 0) + 1
-        hourly_data = [{'hour': k, 'count': v} for k, v in sorted(hourly_counts.items())]
+    hourly_data = hourly_request_series()
 
     model_usage = Model.objects.annotate(
         request_count=Count('requests', filter=Q(requests__created_at__gte=last_24h))

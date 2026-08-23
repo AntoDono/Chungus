@@ -29,7 +29,7 @@ function fmt(ts: string | null) {
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="5" class="px-3 py-8 text-center text-paper-faint">Ruling the ledger…</td>
+          <td colspan="5" class="px-3 py-8 text-center text-paper-faint">Loading…</td>
         </tr>
         <tr v-else-if="!rows.length">
           <td colspan="5" class="px-3 py-8 text-center text-paper-faint">No requests recorded.</td>

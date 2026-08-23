@@ -8,9 +8,11 @@ const history = ref<HistoryPage | null>(null)
 const charts = ref<ChartData | null>(null)
 const revealed = ref<Record<number, string>>({})
 const error = ref('')
+const loading = ref(true)
 
 async function load(page = 1) {
   error.value = ''
+  if (!usage.value) loading.value = true
   try {
     const [keyPayload, usagePayload, histPayload] = await Promise.all([
       api('/internal/me/keys'),
@@ -25,6 +27,8 @@ async function load(page = 1) {
     }
   } catch (err: unknown) {
     error.value = (err as { message?: string }).message || 'Could not load console.'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -57,67 +61,91 @@ onMounted(() => load())
 
     <p v-if="error" class="text-oxide">{{ error }}</p>
 
-    <section v-if="isAdmin && charts" class="grid gap-4 md:grid-cols-2">
-      <HourChart :points="charts.hourly_requests || []" />
-      <div class="hairline p-4">
-        <p class="mb-4 text-[0.65rem] uppercase tracking-ledger text-paper-faint">Models · 24h</p>
-        <ul class="space-y-2 text-sm">
-          <li v-for="m in charts.model_usage" :key="m.name" class="flex justify-between">
-            <span>{{ m.name }}</span>
-            <span class="font-mono tabular">{{ m.request_count }}</span>
-          </li>
-          <li v-if="!charts.model_usage?.length" class="text-paper-faint">Quiet bench.</li>
-        </ul>
+    <GpuStatus />
+
+    <template v-if="loading">
+      <div class="grid gap-4 md:grid-cols-2">
+        <LoadingBlock label="Requests" height="13rem" />
+        <LoadingBlock label="Models" height="13rem" />
       </div>
-    </section>
-
-    <section class="grid gap-px bg-paper-rule dark:bg-night-rule sm:grid-cols-3">
-      <MetricCell label="Requests" :value="usage?.total_requests ?? 0" hint="Owned keys" class="bg-paper dark:bg-night" />
-      <MetricCell label="Tokens" :value="usage?.total_tokens ?? 0" class="bg-paper dark:bg-night" />
-      <MetricCell label="Last 24h" :value="usage?.requests_24h ?? 0" class="bg-paper dark:bg-night" />
-    </section>
-
-    <section>
-      <h2 class="mb-4 font-display text-2xl">Keys</h2>
-      <div v-if="!keys.length" class="text-sm text-paper-faint">No keys bound to this account.</div>
-      <div v-for="key in keys" :key="key.id" class="hairline mb-4 p-5">
-        <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 class="font-display text-xl">{{ key.name }}</h3>
-          <span class="text-[0.65rem] uppercase tracking-ledger" :class="key.is_active ? 'text-oxide' : 'text-paper-faint'">
-            {{ key.is_active ? 'Live' : 'Dormant' }}
-          </span>
-        </div>
-        <p class="mt-1 text-sm text-paper-faint">{{ key.description || '—' }}</p>
-        <p class="mt-3 font-mono text-sm">
-          {{ revealed[key.id] || key.key_preview || '••••' }}
-        </p>
-        <div class="mt-3 flex gap-4 text-[0.7rem] uppercase tracking-wider">
-          <button type="button" class="text-oxide" @click="reveal(key.id)">Reveal</button>
-          <button type="button" @click="copyKey(key.id)">Copy</button>
-        </div>
-        <div class="mt-5 grid gap-4 sm:grid-cols-2">
-          <UsageMeter
-            :used="key.requests_this_minute ?? usage?.requests_this_minute ?? 0"
-            :limit="key.rate_limit_per_minute"
-            label="RPM"
-          />
-          <UsageMeter
-            :used="key.requests_this_hour ?? usage?.requests_this_hour ?? 0"
-            :limit="key.rate_limit_per_hour"
-            label="RPH"
-          />
-        </div>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <LoadingBlock label="Requests" height="3rem" />
+        <LoadingBlock label="Tokens" height="3rem" />
+        <LoadingBlock label="Last 24h" height="3rem" />
       </div>
-    </section>
+      <LoadingBlock label="Keys" height="6rem" :lines="2" />
+      <LoadingBlock label="History" height="8rem" />
+    </template>
 
-    <section>
-      <h2 class="mb-4 font-display text-2xl">History</h2>
-      <p class="mb-3 text-xs text-paper-faint">Prompts are omitted from this ledger.</p>
-      <RequestTable
-        :rows="history?.requests || []"
-        :pagination="history?.pagination"
-        @page="load"
-      />
-    </section>
+    <template v-else>
+      <section v-if="isAdmin && charts" class="grid gap-4 md:grid-cols-2">
+        <HourChart :points="charts.hourly_requests || []" title="Requests · last 24h" />
+        <BreakdownChart
+          title="Models · 24h"
+          :slices="(charts.model_usage || []).map((m) => ({ name: m.name, value: m.request_count }))"
+        />
+      </section>
+      <section v-if="isAdmin && charts?.model_tokens?.length" class="grid gap-4 md:grid-cols-2">
+        <BreakdownChart
+          title="Tokens · 24h"
+          :slices="charts.model_tokens.map((m) => ({ name: m.name, value: m.total_tokens }))"
+        />
+        <BreakdownChart
+          title="Keys · 24h"
+          :slices="(charts.api_key_usage || []).map((k) => ({ name: k.name, value: k.request_count }))"
+          empty-text="No key traffic."
+        />
+      </section>
+
+      <section class="grid gap-px bg-paper-rule dark:bg-night-rule sm:grid-cols-3">
+        <MetricCell label="Requests" :value="usage?.total_requests ?? 0" hint="Owned keys" class="bg-paper dark:bg-night" />
+        <MetricCell label="Tokens" :value="usage?.total_tokens ?? 0" class="bg-paper dark:bg-night" />
+        <MetricCell label="Last 24h" :value="usage?.requests_24h ?? 0" class="bg-paper dark:bg-night" />
+      </section>
+
+      <section>
+        <h2 class="mb-4 font-display text-2xl">Keys</h2>
+        <div v-if="!keys.length" class="text-sm text-paper-faint">No keys bound to this account.</div>
+        <div v-for="key in keys" :key="key.id" class="hairline mb-4 p-5">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="font-display text-xl">{{ key.name }}</h3>
+            <span class="text-[0.65rem] uppercase tracking-ledger" :class="key.is_active ? 'text-oxide' : 'text-paper-faint'">
+              {{ key.is_active ? 'Live' : 'Dormant' }}
+            </span>
+          </div>
+          <p class="mt-1 text-sm text-paper-faint">{{ key.description || '—' }}</p>
+          <p class="mt-3 font-mono text-sm">
+            {{ revealed[key.id] || key.key_preview || '••••' }}
+          </p>
+          <div class="mt-3 flex gap-4 text-[0.7rem] uppercase tracking-wider">
+            <button type="button" class="text-oxide" @click="reveal(key.id)">Reveal</button>
+            <button type="button" @click="copyKey(key.id)">Copy</button>
+          </div>
+          <div class="mt-5 grid gap-4 sm:grid-cols-2">
+            <UsageMeter
+              :used="key.requests_this_minute ?? usage?.requests_this_minute ?? 0"
+              :limit="key.rate_limit_per_minute"
+              label="RPM"
+            />
+            <UsageMeter
+              :used="key.requests_this_hour ?? usage?.requests_this_hour ?? 0"
+              :limit="key.rate_limit_per_hour"
+              label="RPH"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mb-4 font-display text-2xl">History</h2>
+        <p class="mb-3 text-xs text-paper-faint">Prompts are omitted from this history.</p>
+        <RequestTable
+          :rows="history?.requests || []"
+          :pagination="history?.pagination"
+          :loading="loading"
+          @page="load"
+        />
+      </section>
+    </template>
   </div>
 </template>

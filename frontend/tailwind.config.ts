@@ -28,9 +28,9 @@ export default {
           faint: '#9a9083',
         },
         oxide: {
-          DEFAULT: '#b42318',
-          deep: '#8f1d16',
-          glow: '#e24a3a',
+          DEFAULT: '#2d6a4f',
+          deep: '#1b4332',
+          glow: '#52b788',
         },
       },
       fontFamily: {

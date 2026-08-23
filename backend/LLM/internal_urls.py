@@ -5,6 +5,7 @@ from . import internal_views
 urlpatterns = [
     path('health', internal_views.health, name='internal_health'),
     path('public/stats', internal_views.public_stats, name='internal_public_stats'),
+    path('public/gpu', internal_views.public_gpu, name='internal_public_gpu'),
 
     path('auth/csrf', internal_views.auth_csrf, name='internal_auth_csrf'),
     path('auth/login', internal_views.auth_login, name='internal_auth_login'),

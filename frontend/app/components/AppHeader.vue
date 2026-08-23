@@ -6,7 +6,7 @@ const colorMode = useColorMode()
 const links = computed(() => {
   const base = [
     { to: '/', label: 'Index' },
-    { to: '/docs', label: 'Ledger' },
+    { to: '/docs', label: 'Docs' },
   ]
   if (user.value) base.push({ to: '/dashboard', label: 'Console' })
   else base.push({ to: '/login', label: 'Sign in' })

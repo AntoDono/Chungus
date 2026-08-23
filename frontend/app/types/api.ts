@@ -6,9 +6,52 @@ export interface AuthUser {
   role: Role
 }
 
+export interface HourlyPoint {
+  hour: string
+  count: number
+  tokens?: number
+}
+
+export interface HealthStatus {
+  status: string
+  uptime_seconds?: number
+}
+
 export interface PublicStats {
   total_requests: number
   total_tokens: number
+  requests_24h?: number
+  hourly_requests?: HourlyPoint[]
+}
+
+export interface GpuDevice {
+  index: number | null
+  name: string
+  uuid?: string
+  utilization_gpu: number | null
+  utilization_memory: number | null
+  memory_used_mb: number | null
+  memory_total_mb: number | null
+  memory_pct: number | null
+  temperature_c: number | null
+  power_draw_w: number | null
+  power_limit_w: number | null
+  fan_speed_pct: number | null
+  clock_graphics_mhz: number | null
+  clock_memory_mhz: number | null
+  pstate: string | null
+  pcie_gen: number | null
+  pcie_width: number | null
+  voltage_mv: number | null
+  in_use: boolean
+}
+
+export interface GpuStatusPayload {
+  available: boolean
+  error?: string | null
+  gpus: GpuDevice[]
+  cuda_visible_devices?: string | null
+  collected_at: string
 }
 
 export interface ApiKeyRecord {
@@ -101,7 +144,7 @@ export interface AdminUser {
 }
 
 export interface ChartData {
-  hourly_requests: Array<{ hour: string; count: number }>
+  hourly_requests: HourlyPoint[]
   model_usage: Array<{ name: string; request_count: number }>
   model_tokens: Array<{
     name: string

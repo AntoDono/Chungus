@@ -6,11 +6,17 @@ definePageMeta({ middleware: ['auth', 'admin'] })
 const users = ref<AdminUser[]>([])
 const error = ref('')
 const minted = ref('')
+const loading = ref(true)
 const form = ref({ username: '', password: '', role: 'user' as Role })
 
 async function load() {
-  const payload = await api('/internal/admin/users')
-  users.value = unwrapList<AdminUser>(payload, ['users'])
+  if (!users.value.length) loading.value = true
+  try {
+    const payload = await api('/internal/admin/users')
+    users.value = unwrapList<AdminUser>(payload, ['users'])
+  } finally {
+    loading.value = false
+  }
 }
 
 async function createUser() {
@@ -70,7 +76,8 @@ onMounted(load)
       </button>
     </form>
 
-    <div class="hairline overflow-x-auto">
+    <LoadingBlock v-if="loading" label="Loading fellows" height="8rem" />
+    <div v-else class="hairline overflow-x-auto">
       <table class="min-w-full text-left text-sm">
         <thead class="text-[0.65rem] uppercase tracking-ledger text-paper-faint">
           <tr>

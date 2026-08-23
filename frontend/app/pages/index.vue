@@ -43,15 +43,20 @@ function fmtUptime(seconds: number | null) {
 <template>
   <div class="space-y-12">
     <div class="stagger">
-      <p class="text-[0.7rem] uppercase tracking-ledger text-paper-faint dark:text-night-faint">
-        Computing Hybrid Utilization Network for GPU Unified Scheduling
-      </p>
-      <h1 class="mt-6 font-display text-6xl font-semibold leading-[0.9] tracking-tight sm:text-8xl">
+      <h1 class="font-display text-6xl font-semibold leading-[0.9] tracking-tight sm:text-8xl">
         CHUNGUS
       </h1>
       <p class="mt-6 max-w-xl text-lg leading-relaxed text-paper-faint dark:text-night-faint">
-        Lab notebook for inference. Keys, rate limits, and a public OpenAI-compatible API —
-        ruled in oxide on warm paper.
+        Computing Hybrid Utilization Network for GPU Unified Scheduling
+      </p>
+      <p class="mt-3 text-sm text-paper-faint dark:text-night-faint">
+        By
+        <a
+          href="https://github.com/antodono"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-oxide no-underline hover:border-b hover:border-oxide"
+        >Anthony (Youwei) Zhen</a>
       </p>
     </div>
 
